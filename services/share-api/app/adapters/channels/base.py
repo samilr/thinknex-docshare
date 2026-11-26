@@ -4,9 +4,7 @@ Agregar un canal nuevo (Teams, Slack, etc.) = implementar ``ChannelAdapter`` y r
 El documento nunca viaja por el canal: solo el enlace o el código OTP.
 """
 
-from collections import deque
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from typing import Protocol
 
 from app.domain.enums import Channel, NotificationKind
@@ -30,37 +28,6 @@ class DeliveryResult:
 
 class ChannelAdapter(Protocol):
     def send(self, message: OutboundMessage) -> DeliveryResult: ...
-
-
-@dataclass
-class DevOutbox:
-    """Bandeja en memoria SOLO para ENV=dev: permite a la demo leer enlaces y OTP simulados."""
-
-    messages: deque[dict[str, str]] = field(default_factory=lambda: deque(maxlen=200))
-
-    def record(self, message: OutboundMessage) -> None:
-        self.messages.append(
-            {
-                "at": datetime.now(UTC).isoformat(),
-                "channel": message.channel.value,
-                "kind": message.kind.value,
-                "to": message.to,
-                "subject": message.subject,
-                "body": message.body,
-            }
-        )
-
-
-class RecordingChannel:
-    """Decorador que copia cada mensaje a la DevOutbox antes de entregarlo."""
-
-    def __init__(self, inner: ChannelAdapter, outbox: DevOutbox) -> None:
-        self._inner = inner
-        self._outbox = outbox
-
-    def send(self, message: OutboundMessage) -> DeliveryResult:
-        self._outbox.record(message)
-        return self._inner.send(message)
 
 
 class ChannelRegistry:

@@ -51,18 +51,26 @@ class Settings(BaseSettings):
     dms_base_url: str = "http://localhost:8001"
     dms_api_key: SecretStr
     dms_timeout_seconds: float = 10.0
+    # Si se define, se agrega un ID token de Google (Cloud Run con invoker IAM) además de la key
+    dms_audience: str | None = None
 
-    # Almacenamiento de snapshots
+    # Almacenamiento de snapshots: s3 (S3/SeaweedFS local) o gcs (Cloud Storage con ADC)
+    storage_backend: Literal["s3", "gcs"] = "s3"
     s3_endpoint_url: str | None = None
     s3_access_key: SecretStr | None = None
     s3_secret_key: SecretStr | None = None
     s3_region: str = "us-east-1"
     snapshot_bucket: str = "share-snapshots"
 
-    # Canales
+    # Canales. EMAIL_PROVIDER: smtp (Mailpit local) | resend (email real) | none (solo simulado)
+    email_provider: Literal["smtp", "resend", "none"] = "smtp"
+    email_from: str = "Documentos DEMO <no-reply@demo-corp.example>"
     smtp_host: str = "localhost"
     smtp_port: int = 1025
-    smtp_from: str = "Documentos DEMO <no-reply@demo-corp.example>"
+    resend_api_key: SecretStr | None = None
+    # Bandeja simulada (SOLO DEMO): guarda cada mensaje, con enlace/OTP, visible para ADMIN
+    simulated_inbox_enabled: bool = False
+    simulated_inbox_ttl_days: int = 7
 
     # Chequeo de sensibilidad asistido por LLM (opcional)
     sensitivity_llm_enabled: bool = False

@@ -8,12 +8,14 @@ from app.catalog import Catalog, load_seed_entries
 from app.config import Settings, get_settings
 from app.routes import router
 from app.seed import seed
-from app.storage import BlobStore, S3BlobStore
+from app.storage import BlobStore, GcsBlobStore, S3BlobStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 def _build_store(settings: Settings) -> BlobStore:
+    if settings.storage_backend == "gcs":
+        return GcsBlobStore(settings.dms_bucket)
     store = S3BlobStore(
         bucket=settings.dms_bucket,
         endpoint_url=settings.s3_endpoint_url,

@@ -14,7 +14,12 @@ def main() -> None:
     configure_logging(settings.log_level)
     factory = session_factory(settings.database_url)
     with factory() as db, db.begin():
-        result = retention_service.run(db, build_storage(settings), settings.snapshot_grace_hours)
+        result = retention_service.run(
+            db,
+            build_storage(settings),
+            settings.snapshot_grace_hours,
+            inbox_ttl_days=settings.simulated_inbox_ttl_days,
+        )
     print(json.dumps(result.__dict__))
 
 

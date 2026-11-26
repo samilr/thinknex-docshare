@@ -65,3 +65,22 @@ class InMemoryBlobStore:
 
     def exists(self, key: str) -> bool:
         return key in self._objects
+
+
+class GcsBlobStore:
+    """Cloud Storage con credenciales del entorno (cuenta de servicio de Cloud Run)."""
+
+    def __init__(self, bucket: str) -> None:
+        from google.cloud import storage
+
+        self._bucket = storage.Client().bucket(bucket)
+
+    def put(self, key: str, data: bytes, content_type: str) -> None:
+        self._bucket.blob(key).upload_from_string(data, content_type=content_type)
+
+    def get(self, key: str) -> bytes:
+        data: bytes = self._bucket.blob(key).download_as_bytes()
+        return data
+
+    def exists(self, key: str) -> bool:
+        return bool(self._bucket.blob(key).exists())

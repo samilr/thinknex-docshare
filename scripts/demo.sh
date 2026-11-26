@@ -23,12 +23,15 @@ api() { # api METHOD PATH TOKEN [JSON] -> imprime body; el HTTP status queda en 
   curl "${args[@]}" "$BASE$path" > out/.status; cat out/.body
 }
 http_status() { cat out/.status; }
-last_link()  { curl -sf "$BASE/api/v1/dev/outbox" | jq -r '[.[] | select(.kind=="LINK")][0].body' | grep -oE 'https?://[^ ]+/s/[A-Za-z0-9_-]+'; }
-last_otp()   { curl -sf "$BASE/api/v1/dev/outbox" | jq -r '[.[] | select(.kind=="OTP")][0].body' | grep -oE '[0-9]{6}' | head -1; }
+inbox()      { curl -sf "$BASE/api/v1/admin/inbox?limit=20" -H "Authorization: Bearer $ADMIN"; }
+last_link()  { inbox | jq -r '[.items[] | select(.kind=="LINK")][0].body' | grep -oE 'https?://[^ ]+/s/[A-Za-z0-9_-]+'; }
+last_otp()   { inbox | jq -r '[.items[] | select(.kind=="OTP")][0].body' | grep -oE '[0-9]{6}' | head -1; }
 
 bold "Demo · Compartición segura de documentos"
 ANA=$(login ana@demo-corp.example); CARLA=$(login carla@demo-corp.example)
-ok "Login: ana@demo-corp.example (SHARER) y carla@demo-corp.example (AUDITOR)"
+ADMIN=$(curl -sf -X POST "$BASE/api/v1/auth/token" --data-urlencode "username=$BOOTSTRAP_ADMIN_EMAIL" \
+  --data-urlencode "password=$BOOTSTRAP_ADMIN_PASSWORD" | jq -r .access_token)
+ok "Login: ana (SHARER), carla (AUDITOR) y el ADMIN (lee la bandeja simulada)"
 
 step "1. Catálogo del sistema documental (vía share-api)"
 api GET /api/v1/documents "$ANA" | jq -r '.items[] | "  \(.id)  \(.classification|.[0:12])\t\(.title)"'
@@ -55,7 +58,7 @@ api POST /api/v1/shares "$ANA" '{"document_id":"doc-006","recipient":{"name":"Ma
 info "HTTP $(http_status) → se reenvía con acknowledge_sensitive=true"
 api POST /api/v1/shares "$ANA" '{"document_id":"doc-006","recipient":{"name":"María González","phone":"+56 9 8765 4321"},"channel":"WHATSAPP","reason":"Certificado solicitado por la clienta","acknowledge_sensitive":true}' \
   | jq -c '{id, status, channel, sensitivity_decision}'
-ok "HTTP $(http_status) · mensaje simulado de WhatsApp en /api/v1/dev/outbox"
+ok "HTTP $(http_status) · mensaje simulado de WhatsApp en la bandeja (/api/v1/admin/inbox)"
 
 step "5. Documento RESTRICTED (doc-005) a un externo → bloqueado por política"
 api POST /api/v1/shares "$ANA" '{"document_id":"doc-005","recipient":{"name":"Externo","email":"x@competidor.example"},"channel":"EMAIL","reason":"intento","acknowledge_sensitive":true}' | jq -c '{status, detail}'

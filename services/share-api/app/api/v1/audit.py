@@ -3,13 +3,23 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Query
+from sqlalchemy.orm import Session
 
 from app.api.deps import AuditorDep, DbDep
+from app.db.models import AuditEvent
 from app.domain.enums import AuditEventType, Channel
 from app.schemas import AuditEventOut, AuditPage, ChainVerificationOut
 from app.services import audit_service
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+def events_out(db: Session, rows: list[AuditEvent]) -> list[AuditEventOut]:
+    labels = audit_service.actor_labels(db, rows)
+    return [
+        AuditEventOut.model_validate(r).model_copy(update={"actor": labels.get(r.actor_id or "")})
+        for r in rows
+    ]
 
 
 @router.get("", response_model=AuditPage, response_model_by_alias=True)
@@ -41,13 +51,8 @@ def list_events(
         limit=limit,
         offset=offset,
     )
-    labels = audit_service.actor_labels(db, rows)
-    items = [
-        AuditEventOut.model_validate(r).model_copy(update={"actor": labels.get(r.actor_id or "")})
-        for r in rows
-    ]
     return AuditPage(
-        items=items,
+        items=events_out(db, rows),
         total=total,
         limit=limit,
         offset=offset,

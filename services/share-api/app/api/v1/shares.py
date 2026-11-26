@@ -3,8 +3,25 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import ContextDep, SharerDep, ShareServiceDep
-from app.schemas import PrecheckRequest, PrecheckResponse, ShareOut, ShareRequest
+from app.api.deps import (
+    AnyRoleDep,
+    ContextDep,
+    DbDep,
+    RevokerDep,
+    SharerDep,
+    ShareServiceDep,
+)
+from app.api.v1.audit import events_out
+from app.domain.enums import Channel, ShareStatus
+from app.schemas import (
+    AuditEventOut,
+    PrecheckRequest,
+    PrecheckResponse,
+    ShareListPage,
+    ShareOut,
+    ShareRequest,
+)
+from app.services.share_service import ShareScope
 
 router = APIRouter(prefix="/shares", tags=["shares"])
 
@@ -29,23 +46,45 @@ def create_share(
     return service.create(user, body, ctx)
 
 
-@router.get("", response_model=list[ShareOut])
+@router.get("", response_model=ShareListPage)
 def list_shares(
-    user: SharerDep,
+    user: AnyRoleDep,
     service: ShareServiceDep,
+    scope: Annotated[ShareScope, Query(description="mine | all (all: ADMIN/AUDITOR)")] = "mine",
+    status_filter: Annotated[ShareStatus | None, Query(alias="status")] = None,
+    channel: Channel | None = None,
+    document_id: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[ShareOut]:
-    return service.list_own(user, limit=limit, offset=offset)
+) -> ShareListPage:
+    return service.search(
+        user,
+        scope=scope,
+        status=status_filter,
+        channel=channel,
+        document_id=document_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{share_id}", response_model=ShareOut)
-def get_share(share_id: uuid.UUID, user: SharerDep, service: ShareServiceDep) -> ShareOut:
-    return service.get_own(user, share_id)
+def get_share(share_id: uuid.UUID, user: AnyRoleDep, service: ShareServiceDep) -> ShareOut:
+    return service.get(user, share_id)
+
+
+@router.get(
+    "/{share_id}/timeline", response_model=list[AuditEventOut], response_model_by_alias=True
+)
+def share_timeline(
+    share_id: uuid.UUID, user: AnyRoleDep, service: ShareServiceDep, db: DbDep
+) -> list[AuditEventOut]:
+    """Eventos de auditoría del share en orden cronológico (detalle en el portal)."""
+    return events_out(db, service.timeline(user, share_id))
 
 
 @router.post("/{share_id}/revoke", response_model=ShareOut)
 def revoke_share(
-    share_id: uuid.UUID, user: SharerDep, service: ShareServiceDep, ctx: ContextDep
+    share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep
 ) -> ShareOut:
     return service.revoke(user, share_id, ctx)

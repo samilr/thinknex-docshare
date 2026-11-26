@@ -20,6 +20,9 @@ dependencies = [
     "pypdf>=5.1",
     "reportlab>=4.2",
     "anthropic>=0.40",
+    "google-cloud-storage>=2.18",
+    "google-auth>=2.35",
+    "requests>=2.32",
 ]
 
 [dependency-groups]
@@ -50,7 +53,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["app/db/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["reportlab.*"]
+module = ["reportlab.*", "google.cloud.*", "google.oauth2.*", "google.auth.*", "google.api_core.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

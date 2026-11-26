@@ -74,8 +74,11 @@ services:
       DMS_BASE_URL: http://document-api:8001
       DMS_API_KEY: ${DMS_API_KEY}
       SNAPSHOT_BUCKET: share-snapshots
+      EMAIL_PROVIDER: smtp
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      SIMULATED_INBOX_ENABLED: "true"
+      FORWARDED_ALLOW_IPS: "*"
       SENSITIVITY_LLM_ENABLED: ${SENSITIVITY_LLM_ENABLED:-false}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports: ["8000:8000"]

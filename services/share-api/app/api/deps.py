@@ -16,6 +16,7 @@ from app.services.access_service import AccessService
 from app.services.auth_service import AuthService
 from app.services.context import RequestContext
 from app.services.share_service import ShareService
+from app.services.user_service import UserService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
@@ -103,6 +104,8 @@ SharerDep = Annotated[User, Depends(require_roles(Role.SHARER))]
 AuditorDep = Annotated[User, Depends(require_roles(Role.AUDITOR))]
 AdminDep = Annotated[User, Depends(require_roles(Role.ADMIN))]
 OversightDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.AUDITOR))]
+AnyRoleDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.SHARER, Role.AUDITOR))]
+RevokerDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
 
 
 def get_auth_service(db: DbDep, settings: SettingsDep) -> AuthService:
@@ -110,6 +113,13 @@ def get_auth_service(db: DbDep, settings: SettingsDep) -> AuthService:
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+def get_user_service(db: DbDep, auth: AuthServiceDep) -> UserService:
+    return UserService(db, auth)
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
 def get_share_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> ShareService:

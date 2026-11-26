@@ -14,19 +14,14 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import OperationalError
 
-from app.adapters.channels.base import (
-    ChannelRegistry,
-    DeliveryResult,
-    DevOutbox,
-    OutboundMessage,
-    RecordingChannel,
-)
+from app.adapters.channels.base import ChannelRegistry, DeliveryResult, OutboundMessage
 from app.adapters.storage import InMemoryBlobStorage
 from app.container import Components
 from app.core.config import Settings
+from app.db.models import SimulatedMessage
 from app.db.seed import seed_users
 from app.db.session import session_factory
 from app.domain.enums import Channel, Classification
@@ -79,6 +74,7 @@ def settings(database: str) -> Settings:
         demo_users_password=SecretStr(PASSWORD),
         dms_api_key=SecretStr("unused"),
         public_base_url="http://testserver",
+        simulated_inbox_enabled=True,
     )
 
 
@@ -100,8 +96,7 @@ def source() -> FakeDocumentSource:
 
 @pytest.fixture(scope="session")
 def components(settings: Settings, source: FakeDocumentSource) -> Components:
-    outbox = DevOutbox()
-    channels = ChannelRegistry({ch: RecordingChannel(OkChannel(), outbox) for ch in Channel})
+    channels = ChannelRegistry({ch: OkChannel() for ch in Channel})
     factory = session_factory(settings.database_url)
     with factory() as db:
         seed_users(db, settings)
@@ -111,14 +106,11 @@ def components(settings: Settings, source: FakeDocumentSource) -> Components:
         storage=InMemoryBlobStorage(),
         channels=channels,
         checker=SensitivityChecker(None, llm_max_chars=1000),
-        outbox=outbox,
     )
 
 
 @pytest.fixture
 def client(settings: Settings, components: Components) -> Iterator[TestClient]:
-    assert components.outbox is not None
-    components.outbox.messages.clear()
     with TestClient(create_app(settings, components)) as c:
         yield c
 
@@ -147,9 +139,20 @@ class Api:
         return result
 
     def last_message(self, kind: str) -> dict[str, str]:
-        outbox = self.components.outbox
-        assert outbox is not None
-        return next(m for m in reversed(outbox.messages) if m["kind"] == kind)
+        with self.components.session_factory() as db:
+            msg = db.scalar(
+                select(SimulatedMessage)
+                .where(SimulatedMessage.kind == kind)
+                .order_by(SimulatedMessage.created_at.desc())
+                .limit(1)
+            )
+            assert msg is not None
+            return {
+                "channel": msg.channel,
+                "kind": msg.kind,
+                "body": msg.body,
+                "to": msg.to_address,
+            }
 
     def last_link_token(self) -> str:
         match = re.search(r"/s/([A-Za-z0-9_-]+)", self.last_message("LINK")["body"])

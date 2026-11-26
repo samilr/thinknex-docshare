@@ -10,7 +10,7 @@ documento se comparte **de forma segura**, que es lo difícil del problema.
 | Capacidad | Estado | Dónde verlo |
 |---|---|---|
 | Compartir por email (SMTP real a Mailpit) | ✅ | `make demo` paso 2, http://localhost:8025 |
-| Compartir por WhatsApp y SMS (simulados) | ✅ | `make demo` pasos 4 y 7, `GET /api/v1/dev/outbox` |
+| Compartir por WhatsApp y SMS (simulados) | ✅ | `make demo` pasos 4 y 7, bandeja simulada `GET /api/v1/admin/inbox` |
 | OTP, descarga y marca de agua | ✅ | `make demo` paso 3, `out/doc-003-compartido.pdf` |
 | Expiración, límite de accesos y revocación | ✅ | Pasos 6 y 7, tests de integración |
 | Política de sensibilidad (reglas) | ✅ | Pasos 4 y 5 |

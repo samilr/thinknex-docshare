@@ -4,8 +4,9 @@ import hashlib
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.adapters.channels.base import ChannelRegistry
@@ -14,6 +15,7 @@ from app.adapters.storage import BlobStorage, snapshot_key
 from app.core.config import Settings
 from app.core.errors import (
     ConflictError,
+    ForbiddenError,
     NotFoundError,
     SensitiveContentError,
     SharingBlockedError,
@@ -21,13 +23,14 @@ from app.core.errors import (
     ValidationFailedError,
 )
 from app.core.security import generate_share_token, hash_token, mask_email, mask_phone
-from app.db.models import Document, Recipient, Share, User
+from app.db.models import AuditEvent, Document, Recipient, Share, User
 from app.domain.enums import (
     ActorType,
     AuditEventType,
     Channel,
     Decision,
     NotificationKind,
+    Role,
     ShareStatus,
 )
 from app.schemas import (
@@ -35,12 +38,15 @@ from app.schemas import (
     PrecheckResponse,
     RecipientIn,
     RecipientOut,
+    ShareListPage,
     ShareOut,
     ShareRequest,
 )
 from app.sensitivity.checker import SensitivityChecker, SensitivityReport
 from app.services import audit_service, notifications
 from app.services.context import RequestContext
+
+ShareScope = Literal["mine", "all"]
 
 
 @dataclass
@@ -246,30 +252,77 @@ class ShareService:
             actor_type=ActorType.SYSTEM,
             actor_id=None,
             ctx=ctx,
+            settings=self.settings,
         )
         return to_share_out(share, notification_status="SENT" if result.ok else "FAILED")
 
-    def list_own(self, user: User, *, limit: int, offset: int) -> list[ShareOut]:
+    def search(
+        self,
+        user: User,
+        *,
+        scope: ShareScope,
+        status: ShareStatus | None,
+        channel: Channel | None,
+        document_id: str | None,
+        limit: int,
+        offset: int,
+    ) -> ShareListPage:
+        if scope == "all" and not user.has_any(Role.ADMIN, Role.AUDITOR):
+            raise ForbiddenError("Solo ADMIN o AUDITOR pueden ver todos los shares")
+        stmt = select(Share)
+        if scope == "mine":
+            stmt = stmt.where(Share.shared_by == user.id)
+        if status is ShareStatus.EXPIRED:  # incluye los vencidos aún no marcados (perezoso)
+            stmt = stmt.where(
+                or_(
+                    Share.status == ShareStatus.EXPIRED.value,
+                    (Share.status == ShareStatus.ACTIVE.value)
+                    & (Share.expires_at <= datetime.now(UTC)),
+                )
+            )
+        elif status is ShareStatus.ACTIVE:
+            stmt = stmt.where(
+                Share.status == ShareStatus.ACTIVE.value, Share.expires_at > datetime.now(UTC)
+            )
+        elif status:
+            stmt = stmt.where(Share.status == status.value)
+        if channel:
+            stmt = stmt.where(Share.channel == channel.value)
+        if document_id:
+            stmt = stmt.join(Document, Share.document_id == Document.id).where(
+                Document.source_id == document_id
+            )
+        total = self.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         shares = self.db.scalars(
-            select(Share)
-            .where(Share.shared_by == user.id)
-            .order_by(Share.created_at.desc())
-            .limit(limit)
-            .offset(offset)
+            stmt.order_by(Share.created_at.desc()).limit(limit).offset(offset)
         ).unique()
-        return [to_share_out(s) for s in shares]
+        return ShareListPage(
+            items=[to_share_out(s) for s in shares], total=total, limit=limit, offset=offset
+        )
 
-    def get_own(self, user: User, share_id: uuid.UUID) -> ShareOut:
-        return to_share_out(self._own(user, share_id))
-
-    def _own(self, user: User, share_id: uuid.UUID) -> Share:
+    def _visible(self, user: User, share_id: uuid.UUID) -> Share:
+        """Dueño, ADMIN o AUDITOR. Para los demás responde 404 (no revela existencia)."""
         share = self.db.get(Share, share_id)
-        if share is None or share.shared_by != user.id:  # 404 también si no es dueño
+        if share is None or (
+            share.shared_by != user.id and not user.has_any(Role.ADMIN, Role.AUDITOR)
+        ):
             raise NotFoundError("Share no encontrado")
         return share
 
+    def get(self, user: User, share_id: uuid.UUID) -> ShareOut:
+        return to_share_out(self._visible(user, share_id))
+
+    def timeline(self, user: User, share_id: uuid.UUID) -> list[AuditEvent]:
+        share = self._visible(user, share_id)
+        rows, _ = audit_service.query(
+            self.db, audit_service.AuditFilters(share_id=share.id), limit=500, offset=0
+        )
+        return list(reversed(rows))
+
     def revoke(self, user: User, share_id: uuid.UUID, ctx: RequestContext) -> ShareOut:
-        share = self._own(user, share_id)
+        share = self._visible(user, share_id)
+        if share.shared_by != user.id and not user.has_any(Role.ADMIN):
+            raise ForbiddenError("Solo quien compartió o un ADMIN puede revocar")
         if share.status != ShareStatus.ACTIVE.value:
             raise ConflictError(f"El share no está activo (estado actual: {share.status})")
         share.status = ShareStatus.REVOKED.value
@@ -284,6 +337,7 @@ class ShareService:
             document_id=share.document_id,
             channel=share.channel,
             ctx=ctx,
+            details={"by_owner": share.shared_by == user.id},
         )
         return to_share_out(share)
 

@@ -89,6 +89,13 @@ class ShareOut(BaseModel):
     revoked_at: datetime | None = None
 
 
+class ShareListPage(BaseModel):
+    items: list[ShareOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class AuditEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

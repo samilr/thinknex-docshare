@@ -3,9 +3,10 @@
 from sqlalchemy.orm import Session
 
 from app.adapters.channels.base import ChannelRegistry, DeliveryResult, OutboundMessage
+from app.core.config import Settings
 from app.core.errors import ValidationFailedError
 from app.core.security import mask_email, mask_phone
-from app.db.models import Notification, Share
+from app.db.models import Notification, Share, SimulatedMessage
 from app.domain.enums import (
     ActorType,
     AuditEventType,
@@ -41,13 +42,27 @@ def send(
     actor_type: ActorType,
     actor_id: str | None,
     ctx: RequestContext | None,
+    settings: Settings,
 ) -> DeliveryResult:
     channel = Channel(share.channel)
+    to = destination(share)
     result = channels.get(channel).send(
-        OutboundMessage(
-            channel=channel, to=destination(share), subject=subject, body=body, kind=kind
-        )
+        OutboundMessage(channel=channel, to=to, subject=subject, body=body, kind=kind)
     )
+    if settings.simulated_inbox_enabled:  # SOLO DEMO: copia legible para la bandeja del portal
+        db.add(
+            SimulatedMessage(
+                share_id=share.id,
+                channel=channel.value,
+                kind=kind.value,
+                to_address=to,
+                subject=subject,
+                body=body,
+                delivered_real=(
+                    result.ok and channel is Channel.EMAIL and settings.email_provider != "none"
+                ),
+            )
+        )
     db.add(
         Notification(
             share_id=share.id,

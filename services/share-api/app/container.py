@@ -4,11 +4,12 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.adapters.channels.base import ChannelAdapter, ChannelRegistry, DevOutbox, RecordingChannel
+from app.adapters.channels.base import ChannelAdapter, ChannelRegistry
+from app.adapters.channels.email_resend import ResendEmailChannel
 from app.adapters.channels.email_smtp import SmtpEmailChannel
 from app.adapters.channels.mock_messaging import MockMessagingChannel
 from app.adapters.document_source import DocumentSource, HttpDocumentSource
-from app.adapters.storage import BlobStorage, S3BlobStorage
+from app.adapters.storage import BlobStorage, GcsBlobStorage, S3BlobStorage
 from app.core.config import Settings
 from app.db.session import session_factory
 from app.domain.enums import Channel
@@ -23,41 +24,53 @@ class Components:
     storage: BlobStorage
     channels: ChannelRegistry
     checker: SensitivityChecker
-    outbox: DevOutbox | None
 
 
-def build_storage(settings: Settings) -> S3BlobStorage:
+def _secret(value: object) -> str | None:
+    getter = getattr(value, "get_secret_value", None)
+    return getter() if getter else None
+
+
+def build_storage(settings: Settings) -> BlobStorage:
+    if settings.storage_backend == "gcs":
+        return GcsBlobStorage(settings.snapshot_bucket)
     storage = S3BlobStorage(
         bucket=settings.snapshot_bucket,
         endpoint_url=settings.s3_endpoint_url,
-        access_key=settings.s3_access_key.get_secret_value() if settings.s3_access_key else None,
-        secret_key=settings.s3_secret_key.get_secret_value() if settings.s3_secret_key else None,
+        access_key=_secret(settings.s3_access_key),
+        secret_key=_secret(settings.s3_secret_key),
         region=settings.s3_region,
     )
     storage.ensure_bucket()
     return storage
 
 
-def build_channels(settings: Settings, outbox: DevOutbox | None) -> ChannelRegistry:
-    adapters: dict[Channel, ChannelAdapter] = {
-        Channel.EMAIL: SmtpEmailChannel(settings.smtp_host, settings.smtp_port, settings.smtp_from),
-        Channel.WHATSAPP: MockMessagingChannel("whatsapp-mock"),
-        Channel.SMS: MockMessagingChannel("sms-mock"),
-    }
-    if outbox is not None:
-        adapters = {ch: RecordingChannel(a, outbox) for ch, a in adapters.items()}
-    return ChannelRegistry(adapters)
+def build_email_channel(settings: Settings) -> ChannelAdapter:
+    if settings.email_provider == "resend":
+        key = _secret(settings.resend_api_key)
+        if not key:
+            raise RuntimeError("EMAIL_PROVIDER=resend requiere RESEND_API_KEY")
+        return ResendEmailChannel(key, settings.email_from)
+    if settings.email_provider == "smtp":
+        return SmtpEmailChannel(settings.smtp_host, settings.smtp_port, settings.email_from)
+    return MockMessagingChannel("email-simulado")
+
+
+def build_channels(settings: Settings) -> ChannelRegistry:
+    return ChannelRegistry(
+        {
+            Channel.EMAIL: build_email_channel(settings),
+            Channel.WHATSAPP: MockMessagingChannel("whatsapp-mock"),
+            Channel.SMS: MockMessagingChannel("sms-mock"),
+        }
+    )
 
 
 def build_checker(settings: Settings) -> SensitivityChecker:
     classifier = None
     if settings.sensitivity_llm_enabled:
         classifier = ClaudeSensitivityClassifier(
-            api_key=(
-                settings.anthropic_api_key.get_secret_value()
-                if settings.anthropic_api_key
-                else None
-            ),
+            api_key=_secret(settings.anthropic_api_key),
             model=settings.sensitivity_llm_model,
             timeout=settings.sensitivity_llm_timeout_seconds,
         )
@@ -65,16 +78,15 @@ def build_checker(settings: Settings) -> SensitivityChecker:
 
 
 def build_components(settings: Settings) -> Components:
-    outbox = DevOutbox() if settings.env == "dev" else None
     return Components(
         session_factory=session_factory(settings.database_url),
         source=HttpDocumentSource(
             settings.dms_base_url,
             settings.dms_api_key.get_secret_value(),
             settings.dms_timeout_seconds,
+            audience=settings.dms_audience,
         ),
         storage=build_storage(settings),
-        channels=build_channels(settings, outbox),
+        channels=build_channels(settings),
         checker=build_checker(settings),
-        outbox=outbox,
     )

@@ -175,6 +175,7 @@ class AccessService:
             actor_type=ActorType.SYSTEM,
             actor_id=None,
             ctx=ctx,
+            settings=self.settings,
         )
         audit_service.record(
             self.db,

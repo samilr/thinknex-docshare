@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
     dms_api_key: SecretStr
+    storage_backend: Literal["s3", "gcs"] = "s3"
     s3_endpoint_url: str | None = None
     s3_access_key: SecretStr | None = None
     s3_secret_key: SecretStr | None = None

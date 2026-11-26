@@ -1,5 +1,6 @@
 """Almacenamiento de snapshots: direccionado por contenido (sha256/<hash>)."""
 
+import contextlib
 from typing import Protocol
 
 import boto3
@@ -86,4 +87,41 @@ class InMemoryBlobStorage:
         self.objects.pop(key, None)
 
     def ping(self) -> bool:
+        return True
+
+
+class GcsBlobStorage:
+    """Cloud Storage con credenciales por ADC (cuenta de servicio de Cloud Run, sin llaves).
+
+    El bucket lo crea Terraform (privado, uniform access, public access prevention).
+    """
+
+    def __init__(self, bucket: str) -> None:
+        from google.cloud import storage  # import diferido: solo se requiere en GCP
+
+        self._client = storage.Client()
+        self._bucket = self._client.bucket(bucket)
+
+    def put(self, key: str, data: bytes, content_type: str) -> None:
+        self._bucket.blob(key).upload_from_string(data, content_type=content_type)
+
+    def get(self, key: str) -> bytes:
+        data: bytes = self._bucket.blob(key).download_as_bytes()
+        return data
+
+    def exists(self, key: str) -> bool:
+        return bool(self._bucket.blob(key).exists())
+
+    def delete(self, key: str) -> None:
+        from google.api_core.exceptions import NotFound
+
+        with contextlib.suppress(NotFound):
+            self._bucket.blob(key).delete()
+
+    def ping(self) -> bool:
+        try:
+            # objects.list está incluido en roles/storage.objectAdmin (buckets.get no).
+            next(iter(self._client.list_blobs(self._bucket, max_results=1)), None)
+        except Exception:
+            return False
         return True

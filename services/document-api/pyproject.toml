@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "boto3>=1.35",
     "reportlab>=4.2",
+    "google-cloud-storage>=2.18",
 ]
 
 [dependency-groups]
@@ -37,7 +38,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["reportlab.*"]
+module = ["reportlab.*", "google.cloud.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -10,11 +10,11 @@ menos de ``grace_hours`` (margen para soporte o investigación de incidentes).
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.adapters.storage import BlobStorage
-from app.db.models import Document, Share
+from app.db.models import Document, Share, SimulatedMessage
 from app.domain.enums import ActorType, AuditEventType, ShareStatus
 from app.services import audit_service
 
@@ -23,6 +23,7 @@ from app.services import audit_service
 class RetentionResult:
     expired_shares: int
     purged_snapshots: int
+    purged_inbox_messages: int = 0
 
 
 def expire_overdue(db: Session, now: datetime) -> int:
@@ -75,8 +76,21 @@ def purge_snapshots(db: Session, storage: BlobStorage, now: datetime, grace_hour
     return purged
 
 
-def run(db: Session, storage: BlobStorage, grace_hours: int) -> RetentionResult:
+def purge_inbox(db: Session, now: datetime, ttl_days: int) -> int:
+    """La bandeja simulada contiene enlaces/OTP en claro: se elimina pasado su TTL."""
+    result = db.execute(
+        delete(SimulatedMessage).where(SimulatedMessage.created_at < now - timedelta(days=ttl_days))
+    )
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+def run(
+    db: Session, storage: BlobStorage, grace_hours: int, *, inbox_ttl_days: int = 7
+) -> RetentionResult:
     now = datetime.now(UTC)
     expired = expire_overdue(db, now)
     purged = purge_snapshots(db, storage, now, grace_hours)
-    return RetentionResult(expired_shares=expired, purged_snapshots=purged)
+    inbox = purge_inbox(db, now, inbox_ttl_days)
+    return RetentionResult(
+        expired_shares=expired, purged_snapshots=purged, purged_inbox_messages=inbox
+    )
