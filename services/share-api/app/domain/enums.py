@@ -1,0 +1,67 @@
+from enum import StrEnum
+
+
+class Role(StrEnum):
+    SHARER = "SHARER"
+    AUDITOR = "AUDITOR"
+
+
+class Channel(StrEnum):
+    EMAIL = "EMAIL"
+    WHATSAPP = "WHATSAPP"
+    SMS = "SMS"
+
+
+class Classification(StrEnum):
+    PUBLIC = "PUBLIC"
+    INTERNAL = "INTERNAL"
+    CONFIDENTIAL = "CONFIDENTIAL"
+    RESTRICTED = "RESTRICTED"
+
+
+class ShareStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    REVOKED = "REVOKED"
+    EXPIRED = "EXPIRED"
+    LOCKED = "LOCKED"
+    EXHAUSTED = "EXHAUSTED"
+
+
+class Decision(StrEnum):
+    ALLOW = "ALLOW"
+    WARN = "WARN"
+    BLOCK = "BLOCK"
+
+
+class NotificationKind(StrEnum):
+    LINK = "LINK"
+    OTP = "OTP"
+
+
+class NotificationStatus(StrEnum):
+    SENT = "SENT"
+    FAILED = "FAILED"
+
+
+class ActorType(StrEnum):
+    USER = "USER"
+    RECIPIENT = "RECIPIENT"
+    SYSTEM = "SYSTEM"
+
+
+class AuditEventType(StrEnum):
+    SENSITIVITY_CHECKED = "SENSITIVITY_CHECKED"
+    SHARE_BLOCKED = "SHARE_BLOCKED"
+    SHARE_CREATED = "SHARE_CREATED"
+    NOTIFICATION_SENT = "NOTIFICATION_SENT"
+    NOTIFICATION_FAILED = "NOTIFICATION_FAILED"
+    LINK_OPENED = "LINK_OPENED"
+    OTP_SENT = "OTP_SENT"
+    OTP_VERIFIED = "OTP_VERIFIED"
+    OTP_FAILED = "OTP_FAILED"
+    DOCUMENT_ACCESSED = "DOCUMENT_ACCESSED"
+    ACCESS_DENIED = "ACCESS_DENIED"
+    SHARE_REVOKED = "SHARE_REVOKED"
+    SHARE_EXPIRED = "SHARE_EXPIRED"
+    SHARE_LOCKED = "SHARE_LOCKED"
+    SNAPSHOT_PURGED = "SNAPSHOT_PURGED"
