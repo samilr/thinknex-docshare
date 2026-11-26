@@ -1,0 +1,87 @@
+name: thinknex-share
+
+x-s3: &s3
+  S3_ENDPOINT_URL: http://s3:8333
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?definir en .env}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?definir en .env}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?definir en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-share}
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Almacenamiento de objetos S3-compatible (SeaweedFS). En la nube: S3 / Azure Blob / GCS.
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf '{"identities":[{"name":"app","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json &&
+        exec weed server -dir=/data -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=64 -volume.max=64
+        -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?definir en .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?definir en .env}
+    ports: ["8333:8333"]
+    volumes: [s3data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["8025:8025", "1025:1025"]
+
+  document-api:
+    build: ./services/document-api
+    environment:
+      <<: *s3
+      DMS_API_KEY: ${DMS_API_KEY:?definir en .env}
+      DMS_BUCKET: dms-documents
+      DMS_AUTO_SEED: "true"
+    ports: ["8001:8001"]
+    depends_on:
+      s3: { condition: service_healthy }
+
+  share-api:
+    build: ./services/share-api
+    environment:
+      <<: *s3
+      ENV: dev
+      PUBLIC_BASE_URL: http://localhost:8000
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-share}
+      JWT_SECRET: ${JWT_SECRET:?definir en .env}
+      OTP_SECRET: ${OTP_SECRET:?definir en .env}
+      DEV_LOGIN_PASSWORD: ${DEV_LOGIN_PASSWORD:?definir en .env}
+      DMS_BASE_URL: http://document-api:8001
+      DMS_API_KEY: ${DMS_API_KEY}
+      SNAPSHOT_BUCKET: share-snapshots
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SENSITIVITY_LLM_ENABLED: ${SENSITIVITY_LLM_ENABLED:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      s3: { condition: service_healthy }
+      mailpit: { condition: service_started }
+      document-api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  s3data:
