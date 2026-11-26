@@ -14,7 +14,7 @@ info() { printf "  %s\n" "$*"; }
 
 login() {
   curl -sf -X POST "$BASE/api/v1/auth/token" \
-    --data-urlencode "username=$1" --data-urlencode "password=$DEV_LOGIN_PASSWORD" | jq -r .access_token
+    --data-urlencode "username=$1" --data-urlencode "password=$DEMO_USERS_PASSWORD" | jq -r .access_token
 }
 api() { # api METHOD PATH TOKEN [JSON] -> imprime body; el HTTP status queda en out/.status
   local method=$1 path=$2 token=$3 body=${4:-}

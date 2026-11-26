@@ -142,7 +142,7 @@ def test_download_requires_verified_otp(api: Api) -> None:
     assert api.client.get(f"/s/{token}/download").status_code == 404
     other_token = api.client.post(
         "/api/v1/auth/token",
-        data={"username": "ana@demo-corp.example", "password": "integration-password"},
+        data={"username": "ana@demo-corp.example", "password": "integration-password-1"},
     ).json()["access_token"]
     r = api.client.get(f"/s/{token}/download", headers={"Authorization": f"Bearer {other_token}"})
     assert r.status_code == 404, "un JWT de usuario interno no sirve como token de descarga"

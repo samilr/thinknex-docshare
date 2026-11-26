@@ -36,7 +36,9 @@ from tests.helpers import FakeDocumentSource
 
 DEFAULT_URL = "postgresql+psycopg://thinknex:thinknex-local-dev@localhost:5433/share_test"
 DATABASE_URL = os.environ.get("TEST_DATABASE_URL", DEFAULT_URL)
-PASSWORD = "integration-password"
+PASSWORD = "integration-password-1"
+ADMIN_EMAIL = "admin@demo-corp.example"
+ADMIN_PASSWORD = "admin-password-1"
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -70,7 +72,11 @@ def settings(database: str) -> Settings:
         database_url=database,
         jwt_secret=SecretStr("integration-jwt-secret-0123456789abcdef"),
         otp_secret=SecretStr("integration-otp-secret-0123456789abcdef"),
-        dev_login_password=SecretStr(PASSWORD),
+        cookie_secure=False,  # TestClient usa http://testserver
+        bootstrap_admin_email=ADMIN_EMAIL,
+        bootstrap_admin_password=SecretStr(ADMIN_PASSWORD),
+        demo_users_enabled=True,
+        demo_users_password=SecretStr(PASSWORD),
         dms_api_key=SecretStr("unused"),
         public_base_url="http://testserver",
     )
@@ -98,7 +104,7 @@ def components(settings: Settings, source: FakeDocumentSource) -> Components:
     channels = ChannelRegistry({ch: RecordingChannel(OkChannel(), outbox) for ch in Channel})
     factory = session_factory(settings.database_url)
     with factory() as db:
-        seed_users(db)
+        seed_users(db, settings)
     return Components(
         session_factory=factory,
         source=source,

@@ -14,7 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -32,8 +32,54 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True)
     name: Mapped[str] = mapped_column(String(200))
-    role: Mapped[str] = mapped_column(String(16))
+    roles: Mapped[list[str]] = mapped_column(ARRAY(String(16)))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(default=True)
+    must_change_password: Mapped[bool] = mapped_column(default=False)
+    failed_login_attempts: Mapped[int] = mapped_column(default=0)
+    locked_until: Mapped[datetime | None]
+    last_login_at: Mapped[datetime | None]
+    password_changed_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+    def has_any(self, *roles: str) -> bool:
+        return any(role in self.roles for role in roles)
+
+
+class RefreshToken(Base):
+    """Refresh token opaco y rotativo. Se guarda solo su hash; ``family_id`` agrupa la cadena
+    de rotaciones de una sesión para revocarla completa si se detecta reutilización."""
+
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (Index("ix_refresh_tokens_family", "family_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    family_id: Mapped[uuid.UUID]
+    expires_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]
+    replaced_by: Mapped[uuid.UUID | None]
+    ip: Mapped[str | None] = mapped_column(String(64))
+    user_agent: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class SimulatedMessage(Base):
+    """Bandeja simulada (SOLO DEMO): guarda el mensaje completo, incluido enlace u OTP."""
+
+    __tablename__ = "simulated_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    share_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
+    channel: Mapped[str] = mapped_column(String(16))
+    kind: Mapped[str] = mapped_column(String(8))
+    to_address: Mapped[str] = mapped_column(String(320))
+    subject: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    delivered_real: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
 
 
 class Document(Base):

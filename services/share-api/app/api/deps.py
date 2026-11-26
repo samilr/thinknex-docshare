@@ -13,6 +13,7 @@ from app.db.models import User
 from app.db.session import session_scope
 from app.domain.enums import Role
 from app.services.access_service import AccessService
+from app.services.auth_service import AuthService
 from app.services.context import RequestContext
 from app.services.share_service import ShareService
 
@@ -51,9 +52,10 @@ def get_request_context(request: Request) -> RequestContext:
 ContextDep = Annotated[RequestContext, Depends(get_request_context)]
 
 
-def get_current_user(
+def get_session_user(
     token: Annotated[str, Depends(oauth2_scheme)], db: DbDep, settings: SettingsDep
 ) -> User:
+    """Usuario autenticado y activo. Usuario y roles se leen SIEMPRE desde la BD."""
     unauthorized = HTTPException(
         status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales inválidas o vencidas",
@@ -64,22 +66,50 @@ def get_current_user(
         user = db.get(User, uuid.UUID(claims["sub"]))
     except (InvalidTokenError, ValueError):
         raise unauthorized from None
-    if user is None:
+    if user is None or not user.is_active:
         raise unauthorized
     return user
 
 
-def require_role(*roles: Role) -> Callable[[User], User]:
-    def _check(user: Annotated[User, Depends(get_current_user)]) -> User:
-        if user.role not in {r.value for r in roles}:
+SessionUserDep = Annotated[User, Depends(get_session_user)]
+
+
+def get_current_user(user: SessionUserDep) -> User:
+    """Como ``get_session_user`` pero exige haber cambiado la contraseña temporal."""
+    if user.must_change_password:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail="Debe cambiar su contraseña antes de continuar",
+            headers={"X-Error-Code": "password_change_required"},
+        )
+    return user
+
+
+CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+def require_roles(*roles: Role) -> Callable[[User], User]:
+    """Autoriza si el usuario tiene al menos uno de los roles indicados."""
+
+    def _check(user: CurrentUserDep) -> User:
+        if not user.has_any(*(r.value for r in roles)):
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Rol insuficiente")
         return user
 
     return _check
 
 
-SharerDep = Annotated[User, Depends(require_role(Role.SHARER))]
-AuditorDep = Annotated[User, Depends(require_role(Role.AUDITOR))]
+SharerDep = Annotated[User, Depends(require_roles(Role.SHARER))]
+AuditorDep = Annotated[User, Depends(require_roles(Role.AUDITOR))]
+AdminDep = Annotated[User, Depends(require_roles(Role.ADMIN))]
+OversightDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.AUDITOR))]
+
+
+def get_auth_service(db: DbDep, settings: SettingsDep) -> AuthService:
+    return AuthService(db, settings)
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 def get_share_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> ShareService:

@@ -34,7 +34,7 @@ make down                # o `make reset` para borrar también los datos
 
 | URL | Qué es |
 |---|---|
-| http://localhost:8000/docs | Swagger de share-api (botón **Authorize**: `ana@demo-corp.example` / `demo-password`) |
+| http://localhost:8000/docs | Swagger de share-api (botón **Authorize**: `ana@demo-corp.example` / `Demo-pass-2026`) |
 | http://localhost:8001/docs | Swagger del DMS simulado (header `X-API-Key`, ver `.env`) |
 | http://localhost:8025 | Bandeja de Mailpit: emails con enlace y OTP |
 | http://localhost:8000/s/{token} | Página del destinatario (el enlace llega por el canal) |
@@ -47,7 +47,8 @@ make down                # o `make reset` para borrar también los datos
 | `bruno@demo-corp.example` | SHARER | Igual que Ana (para probar que no puede revocar lo de Ana) |
 | `carla@demo-corp.example` | AUDITOR | Consultar y verificar la auditoría |
 
-Contraseña: el valor de `DEV_LOGIN_PASSWORD` en `.env` (por defecto `demo-password`).
+Contraseña: el valor de `DEMO_USERS_PASSWORD` en `.env` (por defecto `Demo-pass-2026`). El ADMIN
+inicial es `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`.
 
 ### Documentos del DMS simulado
 

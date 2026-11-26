@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
 ALGORITHM = "HS256"
 USER_TOKEN = "user"  # noqa: S105 - tipo de token, no un secreto
@@ -16,6 +18,31 @@ DOWNLOAD_TOKEN = "download"  # noqa: S105
 
 class InvalidTokenError(Exception):
     pass
+
+
+# --------------------------------------------------------------------------- contraseñas
+_hasher = PasswordHasher()  # argon2id con parámetros recomendados por la librería (RFC 9106)
+_DUMMY_HASH = _hasher.hash("contraseña-ficticia-para-igualar-tiempos")
+
+
+def hash_password(password: str) -> str:
+    return _hasher.hash(password)
+
+
+def verify_password(password: str, password_hash: str | None) -> bool:
+    """Compara en tiempo ~constante; sin hash (usuario inexistente) igual ejecuta argon2."""
+    try:
+        return _hasher.verify(password_hash or _DUMMY_HASH, password) and password_hash is not None
+    except (VerifyMismatchError, VerificationError, InvalidHashError):
+        return False
+
+
+def password_needs_rehash(password_hash: str) -> bool:
+    return _hasher.check_needs_rehash(password_hash)
+
+
+def generate_temporary_password() -> str:
+    return secrets.token_urlsafe(12)
 
 
 def _encode(claims: dict[str, Any], secret: str, ttl: timedelta) -> str:
@@ -36,9 +63,11 @@ def _decode(token: str, secret: str, expected_type: str) -> dict[str, Any]:
     return claims
 
 
-def create_user_token(user_id: uuid.UUID, role: str, secret: str, ttl_minutes: int) -> str:
+def create_user_token(user_id: uuid.UUID, roles: list[str], secret: str, ttl_minutes: int) -> str:
+    """Access token de corta vida. Los roles viajan como información para el cliente; la API
+    siempre vuelve a leer usuario y roles desde la BD (una desactivación aplica de inmediato)."""
     return _encode(
-        {"sub": str(user_id), "role": role, "typ": USER_TOKEN},
+        {"sub": str(user_id), "roles": roles, "typ": USER_TOKEN},
         secret,
         timedelta(minutes=ttl_minutes),
     )

@@ -67,7 +67,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-share}
       JWT_SECRET: ${JWT_SECRET:?definir en .env}
       OTP_SECRET: ${OTP_SECRET:?definir en .env}
-      DEV_LOGIN_PASSWORD: ${DEV_LOGIN_PASSWORD:?definir en .env}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:?definir en .env}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?definir en .env}
+      DEMO_USERS_ENABLED: ${DEMO_USERS_ENABLED:-false}
+      DEMO_USERS_PASSWORD: ${DEMO_USERS_PASSWORD:-}
       DMS_BASE_URL: http://document-api:8001
       DMS_API_KEY: ${DMS_API_KEY}
       SNAPSHOT_BUCKET: share-snapshots

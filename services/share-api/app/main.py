@@ -19,8 +19,8 @@ Compartición **segura y auditable** de documentos del sistema documental.
 * Cada acción queda en una auditoría append-only encadenada por hash (`/api/v1/audit/verify`).
 * Antes de compartir se evalúa la sensibilidad (reglas + IA opcional).
 
-**Demo:** `Authorize` → usuario `ana@demo-corp.example` (SHARER)
-o `carla@demo-corp.example` (AUDITOR), contraseña = `DEV_LOGIN_PASSWORD` de tu `.env`.
+**Acceso:** botón `Authorize` con un usuario de la plataforma. En ambientes demo existen
+`ana@demo-corp.example` (SHARER), `carla@demo-corp.example` (AUDITOR) y el ADMIN de arranque.
 """
 
 
@@ -31,9 +31,8 @@ def create_app(settings: Settings | None = None, components: Components | None =
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.components = components or build_components(settings)
-        if settings.env == "dev":
-            with app.state.components.session_factory() as db:
-                seed_users(db)
+        with app.state.components.session_factory() as db:
+            seed_users(db, settings)
         yield
 
     app = FastAPI(

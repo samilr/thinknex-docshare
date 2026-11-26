@@ -17,7 +17,7 @@ SECRET = "unit-test-secret-with-at-least-32-bytes"
 
 def test_user_token_roundtrip_and_type_confusion() -> None:
     uid = uuid.uuid4()
-    token = security.create_user_token(uid, "SHARER", SECRET, 5)
+    token = security.create_user_token(uid, ["SHARER"], SECRET, 5)
     assert security.decode_user_token(token, SECRET)["sub"] == str(uid)
     with pytest.raises(security.InvalidTokenError):
         security.decode_user_token(token, "x" * 32)

@@ -16,11 +16,22 @@ class Settings(BaseSettings):
 
     database_url: str
 
-    # Autenticación de usuarios internos (login de desarrollo; en producción: OIDC corporativo)
+    # Autenticación de usuarios internos
     jwt_secret: SecretStr
-    jwt_ttl_minutes: int = 60
-    dev_login_password: SecretStr | None = None
+    jwt_ttl_minutes: int = 15
+    refresh_ttl_days: int = 7
+    cookie_secure: bool = True
+    login_max_attempts: int = 5
+    login_lockout_minutes: int = 15
+    password_min_length: int = 10
     internal_email_domains: list[str] = Field(default_factory=lambda: ["demo-corp.example"])
+
+    # Usuarios iniciales: un ADMIN siempre; usuarios demo solo si se habilita
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: SecretStr | None = None
+    bootstrap_admin_name: str = "Administrador"
+    demo_users_enabled: bool = False
+    demo_users_password: SecretStr | None = None
 
     # Acceso del destinatario
     otp_secret: SecretStr
