@@ -1,0 +1,9 @@
+# cp demo.tfvars.example demo.tfvars  (demo.tfvars no se versiona)
+project_id = "mi-proyecto-gcp"
+region     = "southamerica-west1"
+
+# Opcionales
+# github_repository = "usuario/thinknex"   # habilita despliegue con GitHub Actions (WIF)
+# resend_api_key    = "re_..."             # email real
+# email_from        = "Documentos Seguros <no-reply@tu-dominio.cl>"
+# anthropic_api_key = "sk-ant-..."         # chequeo de sensibilidad con IA

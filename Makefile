@@ -42,7 +42,22 @@ e2e: ## Prueba de humo Playwright contra el stack levantado (http://localhost:80
 demo: ## Recorre el flujo completo contra el stack levantado
 	./scripts/demo.sh
 
+gcp-bootstrap: ## GCP: APIs mínimas + bucket de estado (PROJECT_ID=... [REGION=...])
+	./infra/gcp/bootstrap.sh $(PROJECT_ID) $(REGION)
+
+gcp-plan: ## GCP: terraform plan con infra/terraform/demo.tfvars
+	terraform -chdir=infra/terraform plan -var-file=demo.tfvars -out=tfplan
+
+gcp-apply: ## GCP: aplica el plan revisado
+	terraform -chdir=infra/terraform apply tfplan
+
+gcp-deploy: ## GCP: construye, publica y despliega las 3 imágenes
+	./scripts/deploy.sh
+
+gcp-destroy: ## GCP: elimina toda la infraestructura (evita costos)
+	terraform -chdir=infra/terraform destroy -var-file=demo.tfvars
+
 gc: ## Ejecuta el job de retención (vence shares y purga snapshots)
 	docker compose exec share-api python -m app.jobs.gc
 
-.PHONY: help up down reset logs install lint test web-dev e2e demo gc
+.PHONY: help up down reset logs install lint test web-dev e2e demo gc gcp-bootstrap gcp-plan gcp-apply gcp-deploy gcp-destroy

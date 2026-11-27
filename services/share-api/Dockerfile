@@ -17,5 +17,7 @@ USER app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=12 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-# Migraciones antes de servir. Un solo worker: la DevOutbox de la demo vive en memoria.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --no-access-log --proxy-headers"]
+# En local migra al arrancar; en Cloud Run (RUN_MIGRATIONS=false) lo hace un Cloud Run Job antes
+# de desplegar, para que varias instancias no migren a la vez.
+ENV RUN_MIGRATIONS=true
+CMD ["sh", "-c", "if [ \"$RUN_MIGRATIONS\" = \"true\" ]; then alembic upgrade head; fi && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --no-access-log --proxy-headers"]
