@@ -89,7 +89,7 @@ export function LoginPage() {
           </form>
         </Paper>
         <Text size="xs" c="dimmed" ta="center">
-          Prototipo de prueba técnica · datos ficticios · no es un servicio oficial de ThinkNex.
+          Prototipo Técnico - Samir Gonzalez
         </Text>
       </Stack>
     </Center>
