@@ -4,7 +4,7 @@
 
 ## Contexto
 La política era una matriz fija en el código (clasificación × datos personales × interno o
-externo). En la revisión se pidió que el administrador pueda crear, modificar y eliminar
+externo). El administrador necesita crear, modificar y eliminar
 políticas. El ejemplo concreto: un documento que solo contiene un email pedía confirmación al
 compartirlo hacia afuera, y la organización quería relajar esa regla sin desplegar código.
 

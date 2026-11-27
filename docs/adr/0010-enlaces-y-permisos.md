@@ -6,7 +6,7 @@
 Hasta ahora un envío salía solo por email, WhatsApp o SMS. El destinatario validaba un código y
 **descargaba** el archivo desde una página HTML mínima.
 
-En la revisión se pidió una experiencia como la de SharePoint:
+Se necesitaba una experiencia como la de SharePoint:
 - un enlace que quien comparte copia y envía por el medio que prefiera;
 - que el destinatario abra el documento **dentro de la aplicación**;
 - que quien comparte decida si puede descargarlo o editarlo.
@@ -52,8 +52,7 @@ En la revisión se pidió una experiencia como la de SharePoint:
 - **Visor PDF en el navegador (pdf.js) con descarga oculta:** el archivo igual llega al cliente y se
   obtiene desde las herramientas de desarrollo. Renderizar en el servidor garantiza que con `VIEW`
   el archivo nunca sale.
-- **Editar sobre una copia del snapshot:** produciría versiones paralelas que nadie integra. El
-  usuario pidió trabajar sobre el archivo vivo.
+- **Editar sobre una copia del snapshot:** produciría versiones paralelas que nadie integra. Editar debe operar sobre el archivo vigente.
 - **Guardar el enlace en claro para poder mostrarlo de nuevo:** un volcado de la BD expondría todos
   los enlaces. Se optó por el cifrado con clave fuera de la BD: un volcado por sí solo no basta.
 

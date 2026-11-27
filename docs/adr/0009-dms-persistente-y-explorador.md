@@ -4,7 +4,7 @@
 
 ## Contexto
 La primera versión trataba al sistema documental (DMS) como un catálogo de solo lectura: el portal
-mostraba una tabla con un botón "Compartir". En la revisión con la contraparte surgió una
+mostraba una tabla con un botón "Compartir". Para el uso diario se necesitaba una
 expectativa más cercana a SharePoint: navegar bibliotecas y carpetas, abrir el archivo, ver quién
 tiene acceso y compartir desde el propio archivo, además de subir archivos y nuevas versiones.
 

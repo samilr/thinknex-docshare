@@ -9,29 +9,29 @@ documento se comparte **de forma segura**, que es lo difícil del problema.
 
 | Capacidad | Estado | Dónde verlo |
 |---|---|---|
-| Compartir por email (SMTP real a Mailpit) | ✅ | `make demo` paso 2, http://localhost:8025 |
-| Compartir por WhatsApp y SMS (simulados) | ✅ | `make demo` pasos 4 y 7, bandeja simulada `GET /api/v1/admin/inbox` |
-| OTP, descarga y marca de agua | ✅ | `make demo` paso 3, `out/doc-003-compartido.pdf` |
-| Enlace de ThinkNex Docs (copiar y enviar por cualquier medio) | ✅ | `make demo` paso 3b, portal: *Compartir → Enlace ThinkNex Docs* |
-| Permisos Ver, Ver y descargar, Editar | ✅ | Visor `/s/{token}`, `out/doc-004-pagina-1.png`, tests `test_links.py` |
-| Edición del archivo vivo por el destinatario | ✅ | Test `test_edit_works_on_live_file`, sección 4.3 |
-| Expiración, límite de accesos y revocación | ✅ | Pasos 6 y 7, tests de integración |
-| Política de sensibilidad (reglas) | ✅ | Pasos 4 y 5 |
-| Sensibilidad asistida por LLM | ✅ opcional | `SENSITIVITY_LLM_ENABLED=true` + `ANTHROPIC_API_KEY` |
-| Auditoría: quién, cuándo y por qué medio | ✅ | Paso 8, `GET /api/v1/audit?document_id=doc-003` |
-| Integridad y append-only | ✅ | Paso 9, `GET /api/v1/audit/verify` |
-| Retención de snapshots | ✅ | `make gc`, test `test_retention_purges_snapshot_but_keeps_hash` |
-| **Portal web con login y roles** | ✅ | http://localhost:8080 (local) o la URL de Cloud Run |
-| **Explorador tipo SharePoint** (bibliotecas, carpetas, subida, versiones, visor, personas con acceso) | ✅ | Portal → Documentos |
-| Administración de usuarios y roles | ✅ | Portal → Usuarios (ADMIN) |
-| Bandeja simulada (enlaces y OTP) | ✅ | Portal → Bandeja simulada (ADMIN) |
-| Política configurable por el ADMIN | ✅ | Portal → Políticas (ADR-0011) |
-| Editar acceso, ver enlace de nuevo, marca de agua opcional | ✅ | Detalle del envío o *Personas con acceso* |
-| Actuar como otro usuario (auditado) | ✅ | Portal → Usuarios → *Actuar como este usuario* (ADR-0012) |
-| **Índice de IA** (pgvector + Vertex AI) | ✅ | Panel del archivo → *Detalles → Índice de IA*; `make ai-index` |
-| **Buscar y preguntar con citas (RAG)** | ✅ | `GET /api/v1/ai/search`, `POST /api/v1/ai/ask` |
-| **Asistente agéntico** con conversaciones guardadas | ✅ | Botón flotante, botón *Asistente* en cada documento y página *Asistente* ([08-ia.md](08-ia.md)) |
-| Despliegue en GCP | ✅ | [06-despliegue-gcp.md](06-despliegue-gcp.md) |
+| Compartir por email (SMTP real a Mailpit) | Sí | `make demo` paso 2, http://localhost:8025 |
+| Compartir por WhatsApp y SMS (simulados) | Sí | `make demo` pasos 4 y 7, bandeja simulada `GET /api/v1/admin/inbox` |
+| OTP, descarga y marca de agua | Sí | `make demo` paso 3, `out/doc-003-compartido.pdf` |
+| Enlace de ThinkNex Docs (copiar y enviar por cualquier medio) | Sí | `make demo` paso 3b, portal: *Compartir → Enlace ThinkNex Docs* |
+| Permisos Ver, Ver y descargar, Editar | Sí | Visor `/s/{token}`, `out/doc-004-pagina-1.png`, tests `test_links.py` |
+| Edición del archivo vivo por el destinatario | Sí | Test `test_edit_works_on_live_file`, sección 4.3 |
+| Expiración, límite de accesos y revocación | Sí | Pasos 6 y 7, tests de integración |
+| Política de sensibilidad (reglas) | Sí | Pasos 4 y 5 |
+| Sensibilidad asistida por LLM | Opcional | `SENSITIVITY_LLM_ENABLED=true` + `ANTHROPIC_API_KEY` |
+| Auditoría: quién, cuándo y por qué medio | Sí | Paso 8, `GET /api/v1/audit?document_id=doc-003` |
+| Integridad y append-only | Sí | Paso 9, `GET /api/v1/audit/verify` |
+| Retención de snapshots | Sí | `make gc`, test `test_retention_purges_snapshot_but_keeps_hash` |
+| **Portal web con login y roles** | Sí | http://localhost:8080 (local) o la URL de Cloud Run |
+| **Explorador tipo SharePoint** (bibliotecas, carpetas, subida, versiones, visor, personas con acceso) | Sí | Portal → Documentos |
+| Administración de usuarios y roles | Sí | Portal → Usuarios (ADMIN) |
+| Bandeja simulada (enlaces y OTP) | Sí | Portal → Bandeja simulada (ADMIN) |
+| Política configurable por el ADMIN | Sí | Portal → Políticas (ADR-0011) |
+| Editar acceso, ver enlace de nuevo, marca de agua opcional | Sí | Detalle del envío o *Personas con acceso* |
+| Actuar como otro usuario (auditado) | Sí | Portal → Usuarios → *Actuar como este usuario* (ADR-0012) |
+| **Índice de IA** (pgvector + Vertex AI) | Sí | Panel del archivo → *Detalles → Índice de IA*; `make ai-index` |
+| **Buscar y preguntar con citas (RAG)** | Sí | `GET /api/v1/ai/search`, `POST /api/v1/ai/ask` |
+| **Asistente agéntico** con conversaciones guardadas | Sí | Botón flotante, botón *Asistente* en cada documento y página *Asistente* ([08-ia.md](08-ia.md)) |
+| Despliegue en GCP | Sí | [06-despliegue-gcp.md](06-despliegue-gcp.md) |
 
 ## 4.2 Ejecución
 
@@ -131,9 +131,9 @@ Terraform (ver el README).
      - el asistente revisa la política y deja una **propuesta**;
      - *Revisar y compartir* abre el asistente de compartir ya completado. Nada se comparte sin
        confirmar.
-   - En *Documentos*, el ícono ✦ de cada archivo (o el botón *Asistente* del panel) abre el chat con
+   - En *Documentos*, el ícono del asistente de cada archivo (o el botón *Asistente* del panel) abre el chat con
      sugerencias como "Resume este documento".
-   - La página *Asistente* muestra las conversaciones guardadas, como en Claude o ChatGPT.
+   - La página *Asistente* muestra las conversaciones guardadas, con su historial.
    - Como **carla**, el asistente solo usa herramientas de auditoría ("¿Hubo intentos bloqueados
      esta semana?").
 8. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y

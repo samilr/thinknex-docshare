@@ -4,7 +4,7 @@
 
 ## Contexto
 Para probar la plataforma se necesitaba entrar con varias cuentas (emisora, auditora y
-administrador). Se pidió que el administrador pueda asumir la identidad de otro usuario y hacer todo
+administrador). El administrador necesita asumir la identidad de otro usuario y hacer todo
 como él desde un solo perfil.
 
 ## Decisión

@@ -3,7 +3,7 @@
 **Estado:** aceptada
 
 ## Contexto
-La prueba es para un rol de **Senior AI Engineer orientado a RAG**. Se pidió que el sistema pueda
+La prueba es para un rol de **Senior AI Engineer orientado a RAG**. El sistema debe poder
 buscar y responder preguntas sobre los documentos, con fuentes verificables y sin romper los
 permisos ni la privacidad. La infraestructura ya está en GCP: Cloud SQL Postgres 17, Cloud Run y
 Secret Manager.

@@ -3,8 +3,8 @@
 **Estado:** aceptada
 
 ## Contexto
-Además de preguntar, se pidió un asistente presente en todo el portal y en cada documento, con
-conversaciones guardadas (estilo Claude o ChatGPT). Debía poder operar la plataforma: buscar,
+Además de preguntar, se necesitaba un asistente presente en todo el portal y en cada documento, con
+conversaciones guardadas. Debía poder operar la plataforma: buscar,
 resumir, revisar envíos, políticas y auditoría, y preparar acciones como compartir o revocar.
 
 ## Decisión
