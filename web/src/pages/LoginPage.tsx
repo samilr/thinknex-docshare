@@ -1,6 +1,5 @@
 import {
   Alert,
-  Anchor,
   Button,
   Center,
   Paper,
@@ -16,12 +15,6 @@ import { IconAlertCircle, IconShieldLock } from "@tabler/icons-react";
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/context";
-
-const DEMO_ACCOUNTS = [
-  ["admin@thinknex.example", "Administrador"],
-  ["ana@thinknex.example", "Emisora"],
-  ["carla@thinknex.example", "Auditora"],
-] as const;
 
 export function LoginPage() {
   const { login, status } = useAuth();
@@ -95,29 +88,6 @@ export function LoginPage() {
             </Stack>
           </form>
         </Paper>
-        {import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === "true" && (
-          <Paper withBorder p="md" radius="lg">
-            <Text size="sm" fw={600} mb={6}>
-              Cuentas de demostración (datos ficticios)
-            </Text>
-            <Stack gap={4}>
-              {DEMO_ACCOUNTS.map(([email, role]) => (
-                <Text size="sm" key={email}>
-                  <Anchor
-                    component="button"
-                    type="button"
-                    onClick={() => form.setFieldValue("email", email)}
-                  >
-                    {email}
-                  </Anchor>{" "}
-                  <Text span c="dimmed" size="xs">
-                    · {role}
-                  </Text>
-                </Text>
-              ))}
-            </Stack>
-          </Paper>
-        )}
         <Text size="xs" c="dimmed" ta="center">
           Prototipo de prueba técnica · datos ficticios · no es un servicio oficial de ThinkNex.
         </Text>

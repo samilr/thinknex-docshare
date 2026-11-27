@@ -29,8 +29,7 @@ gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 step "Construyendo y publicando imágenes ($TAG)"
 docker buildx build --platform linux/amd64 --push -t "$(image document-api)" services/document-api
 docker buildx build --platform linux/amd64 --push -t "$(image share-api)" services/share-api
-docker buildx build --platform linux/amd64 --push -t "$(image web)" \
-  --build-arg VITE_SHOW_DEMO_ACCOUNTS="${SHOW_DEMO_ACCOUNTS:-true}" web
+docker buildx build --platform linux/amd64 --push -t "$(image web)" web
 
 step "Desplegando document-api"
 gcloud run deploy "${NAME_PREFIX}-document-api" --image "$(image document-api)" --region "$REGION" --quiet
