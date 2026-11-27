@@ -93,6 +93,8 @@ def source() -> FakeDocumentSource:
     src.add("doc-retention", Classification.PUBLIC, "Documento para probar retencion")
     src.add("doc-edit", Classification.INTERNAL, "Borrador de propuesta comercial")
     src.add("doc-rotate", Classification.PUBLIC, "Folleto para rotar enlace")
+    src.add("doc-email", Classification.INTERNAL, "Contacto comercial: juan@cliente.example")
+    src.add("doc-delete", Classification.INTERNAL, "Archivo que se eliminara")
     return src
 
 
@@ -180,6 +182,13 @@ class Api:
         assert r.status_code == 200, r.text
         access: str = r.json()["access_token"]
         return access
+
+    def admin_headers(self) -> dict[str, str]:
+        r = self.client.post(
+            "/api/v1/auth/token", data={"username": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+        )
+        assert r.status_code == 200, r.text
+        return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
     def audit(self, **params: str) -> list[dict[str, object]]:
         r = self.client.get(

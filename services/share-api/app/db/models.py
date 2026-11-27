@@ -190,3 +190,24 @@ class AuditEvent(Base):
     details: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict)
     prev_hash: Mapped[str] = mapped_column(String(64))
     hash: Mapped[str] = mapped_column(String(64), unique=True)
+
+
+class PolicyRuleRow(Base):
+    """Regla de la política de compartición, administrada por un ADMIN (ver sensitivity/policy)."""
+
+    __tablename__ = "policy_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    action: Mapped[str] = mapped_column(String(8))
+    message: Mapped[str] = mapped_column(String(300))
+    classifications: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
+    recipient: Mapped[str] = mapped_column(String(8), default="ANY")
+    finding_types: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
+    channels: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    created_by: Mapped[str] = mapped_column(String(320))
+    updated_by: Mapped[str] = mapped_column(String(320))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)

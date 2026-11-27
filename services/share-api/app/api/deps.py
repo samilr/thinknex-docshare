@@ -16,6 +16,7 @@ from app.services.access_service import AccessService
 from app.services.auth_service import AuthService
 from app.services.context import RequestContext
 from app.services.library_service import LibraryService
+from app.services.policy_service import PolicyService
 from app.services.share_service import ShareService
 from app.services.user_service import UserService
 
@@ -110,6 +111,8 @@ AdminDep = Annotated[User, Depends(require_roles(Role.ADMIN))]
 OversightDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.AUDITOR))]
 AnyRoleDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.SHARER, Role.AUDITOR))]
 RevokerDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
+# Biblioteca: quienes comparten y el ADMIN (que administra archivos aunque no comparta).
+LibraryUserDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
 
 
 def get_auth_service(db: DbDep, settings: SettingsDep) -> AuthService:
@@ -138,6 +141,11 @@ def get_library_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> L
     return LibraryService(db, settings, c.source)
 
 
+def get_policy_service(db: DbDep) -> PolicyService:
+    return PolicyService(db)
+
+
 ShareServiceDep = Annotated[ShareService, Depends(get_share_service)]
+PolicyServiceDep = Annotated[PolicyService, Depends(get_policy_service)]
 LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]
 AccessServiceDep = Annotated[AccessService, Depends(get_access_service)]

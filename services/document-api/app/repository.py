@@ -49,7 +49,9 @@ def to_meta(doc: Document) -> DocumentMeta:
 # ----------------------------------------------------------------- bibliotecas y carpetas
 def list_libraries(db: Session) -> list[LibraryOut]:
     rows = db.execute(
-        select(Document.library_id, func.count(Document.id)).group_by(Document.library_id)
+        select(Document.library_id, func.count(Document.id))
+        .where(Document.deleted_at.is_(None))
+        .group_by(Document.library_id)
     )
     counts = {library_id: count for library_id, count in rows}
     return [
@@ -128,7 +130,7 @@ def list_documents(
     limit: int,
     offset: int,
 ) -> DocumentPage:
-    stmt = select(Document)
+    stmt = select(Document).where(Document.deleted_at.is_(None))
     if library_id:
         # En una biblioteca se listan los archivos de la carpeta indicada (o de la raíz).
         stmt = stmt.where(Document.library_id == library_id)
@@ -152,7 +154,7 @@ def list_documents(
 
 def get_document(db: Session, doc_id: str) -> Document:
     doc = db.get(Document, doc_id)
-    if doc is None:
+    if doc is None or doc.deleted_at is not None:
         raise NotFound("Documento no encontrado")
     return doc
 
@@ -193,6 +195,7 @@ def create_document(
             Document.library_id == library_id,
             Document.folder_id.is_(None) if folder_id is None else Document.folder_id == folder_id,
             func.lower(Document.filename) == filename.casefold(),
+            Document.deleted_at.is_(None),
         )
     )
     if existing is not None:
@@ -260,6 +263,28 @@ def add_version(
     return doc
 
 
+def update_document(
+    db: Session, doc: Document, *, name: str | None, classification: Classification | None
+) -> Document:
+    """Cambia nombre y/o clasificación. No crea versión: el contenido no cambia."""
+    if name is not None:
+        rename_document(db, doc, name)
+    if classification is not None and classification.value != doc.classification:
+        doc.classification = classification.value
+        doc.updated_at = datetime.now(UTC)
+        db.flush()
+    return doc
+
+
+def delete_document(db: Session, doc: Document, actor: str) -> None:
+    """Eliminación lógica: deja de listarse y de servirse; se conservan versiones y metadata."""
+    now = datetime.now(UTC)
+    doc.deleted_at = now
+    doc.deleted_by = actor
+    doc.updated_at = now
+    db.flush()
+
+
 def rename_document(db: Session, doc: Document, name: str) -> Document:
     """Cambia el nombre visible y el nombre de archivo, conservando la extensión.
 
@@ -279,6 +304,7 @@ def rename_document(db: Session, doc: Document, name: str) -> Document:
             if doc.folder_id is None
             else Document.folder_id == doc.folder_id,
             func.lower(Document.filename) == filename.casefold(),
+            Document.deleted_at.is_(None),
         )
     )
     if existing is not None:

@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, Response, Uploa
 from pydantic import BaseModel, Field
 
 from app.adapters.document_source import SourceFolder, SourceLibrary, UploadedFile
-from app.api.deps import ContextDep, DbDep, LibraryServiceDep, SettingsDep, SharerDep
+from app.api.deps import ContextDep, DbDep, LibraryServiceDep, LibraryUserDep, SettingsDep
 from app.api.v1.audit import events_out
 from app.core.config import Settings
 from app.domain.enums import Classification
@@ -43,13 +43,13 @@ async def _read(file: UploadFile, settings: Settings) -> UploadedFile:
 
 
 @router.get("/libraries", response_model=list[SourceLibrary])
-def libraries(_: SharerDep, service: LibraryServiceDep) -> list[SourceLibrary]:
+def libraries(_: LibraryUserDep, service: LibraryServiceDep) -> list[SourceLibrary]:
     return service.libraries()
 
 
 @router.get("/items", response_model=LibraryItems)
 def items(
-    _: SharerDep,
+    _: LibraryUserDep,
     service: LibraryServiceDep,
     library_id: str,
     folder_id: str | None = None,
@@ -61,7 +61,7 @@ def items(
 
 @router.post("/folders", response_model=SourceFolder, status_code=status.HTTP_201_CREATED)
 def create_folder(
-    body: FolderCreate, user: SharerDep, service: LibraryServiceDep, ctx: ContextDep
+    body: FolderCreate, user: LibraryUserDep, service: LibraryServiceDep, ctx: ContextDep
 ) -> SourceFolder:
     return service.create_folder(user, body.library_id, body.parent_id, body.name, ctx)
 
@@ -73,7 +73,7 @@ def create_folder(
     responses={409: {"description": "name_conflict: ya existe; subir como nueva versión"}},
 )
 async def upload(
-    user: SharerDep,
+    user: LibraryUserDep,
     service: LibraryServiceDep,
     settings: SettingsDep,
     ctx: ContextDep,
@@ -100,7 +100,7 @@ async def upload(
 )
 async def upload_version(
     doc_id: str,
-    user: SharerDep,
+    user: LibraryUserDep,
     service: LibraryServiceDep,
     settings: SettingsDep,
     ctx: ContextDep,
@@ -110,8 +110,17 @@ async def upload_version(
     return service.upload_version(user, doc_id, await _read(file, settings), comment, ctx)
 
 
-class DocumentRename(BaseModel):
-    name: str = Field(min_length=1, max_length=150, description="Nuevo nombre, sin extensión")
+class DocumentUpdate(BaseModel):
+    name: str | None = Field(
+        default=None, min_length=1, max_length=150, description="Nuevo nombre, sin extensión"
+    )
+    classification: Classification | None = Field(
+        default=None, description="Solo ADMIN: cambia qué reglas de la política aplican"
+    )
+
+
+class DeletedOut(BaseModel):
+    revoked_shares: int
 
 
 @router.patch(
@@ -119,22 +128,34 @@ class DocumentRename(BaseModel):
     response_model=LibraryDocument,
     responses={409: {"description": "name_conflict: ya existe ese nombre en la carpeta"}},
 )
-def rename(
-    doc_id: str, body: DocumentRename, user: SharerDep, service: LibraryServiceDep, ctx: ContextDep
+def update(
+    doc_id: str,
+    body: DocumentUpdate,
+    user: LibraryUserDep,
+    service: LibraryServiceDep,
+    ctx: ContextDep,
 ) -> LibraryDocument:
-    """Renombra el archivo. Queda en la auditoría (DOCUMENT_RENAMED) con el nombre anterior."""
-    return service.rename(user, doc_id, body.name, ctx)
+    """Renombra y/o reclasifica. Queda en la auditoría con el valor anterior y el nuevo."""
+    return service.update(user, doc_id, name=body.name, classification=body.classification, ctx=ctx)
+
+
+@router.delete("/documents/{doc_id}", response_model=DeletedOut)
+def delete(
+    doc_id: str, user: LibraryUserDep, service: LibraryServiceDep, ctx: ContextDep
+) -> DeletedOut:
+    """Elimina el archivo (ADMIN o quien lo subió) y revoca sus envíos activos."""
+    return DeletedOut(revoked_shares=service.delete(user, doc_id, ctx))
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentDetail)
-def detail(doc_id: str, _: SharerDep, service: LibraryServiceDep) -> DocumentDetail:
+def detail(doc_id: str, _: LibraryUserDep, service: LibraryServiceDep) -> DocumentDetail:
     return service.detail(doc_id)
 
 
 @router.get("/documents/{doc_id}/content", response_class=Response)
 def content(
     doc_id: str,
-    user: SharerDep,
+    user: LibraryUserDep,
     service: LibraryServiceDep,
     ctx: ContextDep,
     version: Annotated[int | None, Query(ge=1)] = None,
@@ -155,7 +176,7 @@ def content(
 
 
 @router.get("/documents/{doc_id}/access", response_model=list[ShareOut])
-def access(doc_id: str, _: SharerDep, service: LibraryServiceDep) -> list[ShareOut]:
+def access(doc_id: str, _: LibraryUserDep, service: LibraryServiceDep) -> list[ShareOut]:
     """Personas con acceso: envíos del archivo (vigentes primero)."""
     return service.access(doc_id)
 
@@ -166,6 +187,6 @@ def access(doc_id: str, _: SharerDep, service: LibraryServiceDep) -> list[ShareO
     response_model_by_alias=True,
 )
 def activity(
-    doc_id: str, _: SharerDep, service: LibraryServiceDep, db: DbDep
+    doc_id: str, _: LibraryUserDep, service: LibraryServiceDep, db: DbDep
 ) -> list[AuditEventOut]:
     return events_out(db, service.activity(doc_id))

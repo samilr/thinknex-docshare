@@ -37,6 +37,7 @@ class FakeDocumentSource:
 
     def __init__(self) -> None:
         self.docs: dict[str, tuple[SourceDocument, bytes]] = {}
+        self.deleted: dict[str, tuple[SourceDocument, bytes]] = {}
         self._versions: dict[str, list[tuple[SourceVersion, bytes]]] = {}
         self._libraries = {
             "operaciones": "Operaciones",
@@ -217,25 +218,41 @@ class FakeDocumentSource:
         self._store(meta, file.data, comment=comment, actor=actor)
         return meta
 
-    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument:
+    def update(
+        self,
+        doc_id: str,
+        *,
+        name: str | None,
+        classification: Classification | None,
+        actor: str,
+    ) -> SourceDocument:
         current = self.get_metadata(doc_id)
-        stem = name.strip().strip(".")
-        if not stem or "/" in stem:
-            raise ValidationFailedError("Nombre inválido")
-        filename = f"{stem}.{current.filename.rsplit('.', 1)[-1]}"
-        for meta, _ in self.docs.values():
-            if (
-                meta.id != doc_id
-                and meta.library_id == current.library_id
-                and meta.folder_id == current.folder_id
-                and meta.filename.casefold() == filename.casefold()
-            ):
-                raise NameConflictError(
-                    "Ya existe un archivo con ese nombre en esta ubicación", document_id=meta.id
-                )
-        renamed = current.model_copy(update={"title": stem, "filename": filename})
-        self.docs[doc_id] = (renamed, self.docs[doc_id][1])
-        return renamed
+        changes: dict[str, object] = {}
+        if name is not None:
+            stem = name.strip().strip(".")
+            if not stem or "/" in stem:
+                raise ValidationFailedError("Nombre inválido")
+            filename = f"{stem}.{current.filename.rsplit('.', 1)[-1]}"
+            for meta, _ in self.docs.values():
+                if (
+                    meta.id != doc_id
+                    and meta.library_id == current.library_id
+                    and meta.folder_id == current.folder_id
+                    and meta.filename.casefold() == filename.casefold()
+                ):
+                    raise NameConflictError(
+                        "Ya existe un archivo con ese nombre en esta ubicación", document_id=meta.id
+                    )
+            changes.update(title=stem, filename=filename)
+        if classification is not None:
+            changes["classification"] = classification
+        updated = current.model_copy(update=changes)
+        self.docs[doc_id] = (updated, self.docs[doc_id][1])
+        return updated
+
+    def delete(self, doc_id: str, *, actor: str) -> None:
+        self.get_metadata(doc_id)
+        self.deleted[doc_id] = self.docs.pop(doc_id)
 
     def ping(self) -> bool:
         return True

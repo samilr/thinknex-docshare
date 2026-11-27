@@ -88,3 +88,59 @@ def test_unreadable_document_to_external_is_warned() -> None:
     )
     assert report.decision is Decision.WARN
     assert not report.text_extracted
+
+
+def test_custom_rules_most_restrictive_wins_and_channel_filter() -> None:
+    from app.sensitivity.policy import DEFAULT_RULES, PolicyRule, RecipientScope, evaluate
+
+    email_only = [FindingSummary(type="EMAIL", count=1, samples=["j***@x.example"])]
+    no_email = [
+        r
+        if r.name != "Datos personales a externos"
+        else PolicyRule(
+            name=r.name,
+            action=r.action,
+            message=r.message,
+            recipient=r.recipient,
+            finding_types=r.finding_types - {"EMAIL"},
+        )
+        for r in DEFAULT_RULES
+    ]
+    relaxed = evaluate(
+        classification=Classification.INTERNAL,
+        findings=email_only,
+        is_external=True,
+        llm=None,
+        rules=no_email,
+    )
+    assert relaxed.decision is Decision.ALLOW and relaxed.matched == []
+
+    whatsapp = PolicyRule(
+        name="Sin WhatsApp",
+        action=Decision.BLOCK,
+        message="No por WhatsApp.",
+        recipient=RecipientScope.ANY,
+        channels=frozenset({"WHATSAPP"}),
+    )
+    rules = [*DEFAULT_RULES, whatsapp]
+    by_whatsapp = evaluate(
+        classification=Classification.INTERNAL,
+        findings=email_only,
+        is_external=True,
+        llm=None,
+        rules=rules,
+        channel="WHATSAPP",
+    )
+    assert by_whatsapp.decision is Decision.BLOCK
+    assert by_whatsapp.reasons == ["No por WhatsApp."]
+    assert set(by_whatsapp.matched) == {"Datos personales a externos", "Sin WhatsApp"}
+    by_email = evaluate(
+        classification=Classification.INTERNAL,
+        findings=email_only,
+        is_external=True,
+        llm=None,
+        rules=rules,
+        channel="EMAIL",
+    )
+    assert by_email.decision is Decision.WARN
+    assert "(EMAIL)" in by_email.reasons[0]

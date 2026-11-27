@@ -66,6 +66,9 @@ class PrecheckRequest(BaseModel):
     document_id: str
     audience: Audience = Audience.SPECIFIC
     recipient: RecipientIn | None = None
+    channel: Channel | None = Field(
+        default=None, description="Para evaluar reglas por canal (si se omite, aplican todas)"
+    )
 
     @model_validator(mode="after")
     def _recipient_when_specific(self) -> Self:

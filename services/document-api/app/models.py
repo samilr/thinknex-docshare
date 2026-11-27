@@ -59,6 +59,10 @@ class Document(Base):
     created_by: Mapped[str] = mapped_column(String(320))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Eliminación lógica: el archivo desaparece de la biblioteca, pero sus versiones y metadata se
+    # conservan (trazabilidad y posible restauración).
+    deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+    deleted_by: Mapped[str | None] = mapped_column(String(320), default=None)
 
     versions: Mapped[list["DocumentVersion"]] = relationship(
         order_by="DocumentVersion.version", lazy="selectin"

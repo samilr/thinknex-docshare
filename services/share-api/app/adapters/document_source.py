@@ -105,7 +105,15 @@ class DocumentSource(Protocol):
     def upload_version(
         self, doc_id: str, *, file: UploadedFile, comment: str, actor: str
     ) -> SourceDocument: ...
-    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument: ...
+    def update(
+        self,
+        doc_id: str,
+        *,
+        name: str | None,
+        classification: Classification | None,
+        actor: str,
+    ) -> SourceDocument: ...
+    def delete(self, doc_id: str, *, actor: str) -> None: ...
     def ping(self) -> bool: ...
 
 
@@ -261,9 +269,24 @@ class HttpDocumentSource:
         )
         return SourceDocument.model_validate(response.json())
 
-    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument:
-        response = self._request("PATCH", f"/documents/{doc_id}", actor=actor, json={"name": name})
+    def update(
+        self,
+        doc_id: str,
+        *,
+        name: str | None,
+        classification: Classification | None,
+        actor: str,
+    ) -> SourceDocument:
+        body: dict[str, str] = {}
+        if name is not None:
+            body["name"] = name
+        if classification is not None:
+            body["classification"] = classification.value
+        response = self._request("PATCH", f"/documents/{doc_id}", actor=actor, json=body)
         return SourceDocument.model_validate(response.json())
+
+    def delete(self, doc_id: str, *, actor: str) -> None:
+        self._request("DELETE", f"/documents/{doc_id}", actor=actor)
 
     def ping(self) -> bool:
         try:

@@ -35,7 +35,7 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 @router.post("/precheck", response_model=PrecheckResponse, responses=_ERRORS)
 def precheck(body: PrecheckRequest, user: SharerDep, service: ShareServiceDep) -> PrecheckResponse:
     """Evalúa la sensibilidad sin compartir: permite a la interfaz advertir antes de enviar."""
-    return service.precheck(user, body.document_id, body.recipient, body.audience)
+    return service.precheck(user, body.document_id, body.recipient, body.audience, body.channel)
 
 
 @router.post("", response_model=ShareOut, status_code=status.HTTP_201_CREATED, responses=_ERRORS)

@@ -24,9 +24,9 @@ from app.adapters.document_source import (
 )
 from app.adapters.watermark import apply_watermark
 from app.core.config import Settings
-from app.core.errors import NotFoundError, UpstreamError
+from app.core.errors import ForbiddenError, NotFoundError, UpstreamError
 from app.db.models import AuditEvent, Document, Share, User
-from app.domain.enums import ActorType, AuditEventType, Classification, ShareStatus
+from app.domain.enums import ActorType, AuditEventType, Classification, Role, ShareStatus
 from app.schemas import ShareOut
 from app.sensitivity.detectors import FindingSummary, detect, extract_text, summarize
 from app.services import audit_service
@@ -209,13 +209,29 @@ class LibraryService:
             document=self._with_shares([document])[0], findings=findings, new_version=True
         )
 
-    def rename(self, user: User, doc_id: str, name: str, ctx: RequestContext) -> LibraryDocument:
-        """Renombra el archivo en el DMS y deja en la bitácora el nombre anterior, el nuevo y quién.
+    def update(
+        self,
+        user: User,
+        doc_id: str,
+        *,
+        name: str | None,
+        classification: Classification | None,
+        ctx: RequestContext,
+    ) -> LibraryDocument:
+        """Renombra y/o reclasifica. Cada cambio queda en la auditoría con el valor anterior.
 
+        Reclasificar cambia qué reglas de la política aplican, por eso es solo para un ADMIN.
         No altera lo ya compartido: cada envío conserva el título de su snapshot (ADR-0002).
         """
         before = self.source.get_metadata(doc_id)
-        after = self.source.rename(doc_id, name=name, actor=user.email)
+        if classification is not None and classification is not before.classification:
+            if not user.has_any(Role.ADMIN):
+                raise ForbiddenError("Solo un ADMIN puede cambiar la clasificación")
+        else:
+            classification = None
+        after = self.source.update(
+            doc_id, name=name, classification=classification, actor=user.email
+        )
         if (after.title, after.filename) != (before.title, before.filename):
             self._audit(
                 AuditEventType.DOCUMENT_RENAMED,
@@ -228,7 +244,63 @@ class LibraryService:
                 from_filename=before.filename,
                 to_filename=after.filename,
             )
+        if after.classification is not before.classification:
+            self._audit(
+                AuditEventType.DOCUMENT_RECLASSIFIED,
+                user,
+                ctx,
+                source_document_id=doc_id,
+                filename=after.filename,
+                from_classification=before.classification.value,
+                to_classification=after.classification.value,
+            )
         return self._with_shares([after])[0]
+
+    def delete(self, user: User, doc_id: str, ctx: RequestContext) -> int:
+        """Elimina el archivo (lógicamente, en el DMS) y revoca sus envíos activos.
+
+        Puede hacerlo un ADMIN o quien lo subió. Devuelve cuántos envíos se revocaron.
+        """
+        meta = self.source.get_metadata(doc_id)
+        if not user.has_any(Role.ADMIN) and meta.created_by != user.email:
+            raise ForbiddenError("Solo un ADMIN o quien subió el archivo puede eliminarlo")
+        now = datetime.now(UTC)
+        active = self.db.scalars(
+            select(Share)
+            .join(Document, Share.document_id == Document.id)
+            .where(Document.source_id == doc_id, Share.status == ShareStatus.ACTIVE.value)
+        ).all()
+        for share in active:
+            share.status = ShareStatus.REVOKED.value
+            share.revoked_at = now
+            share.revoked_by = user.id
+            audit_service.record(
+                self.db,
+                event_type=AuditEventType.SHARE_REVOKED,
+                actor_type=ActorType.USER,
+                actor_id=user.id,
+                share_id=share.id,
+                document_id=share.document_id,
+                channel=share.channel,
+                ctx=ctx,
+                details={"reason": "DOCUMENT_DELETED", "by_owner": share.shared_by == user.id},
+            )
+        self.db.flush()
+        # Si el DMS falla, la excepción revierte también las revocaciones.
+        self.source.delete(doc_id, actor=user.email)
+        self._audit(
+            AuditEventType.DOCUMENT_DELETED,
+            user,
+            ctx,
+            source_document_id=doc_id,
+            title=meta.title,
+            filename=meta.filename,
+            version=meta.version,
+            sha256=meta.sha256,
+            classification=meta.classification.value,
+            revoked_shares=len(active),
+        )
+        return len(active)
 
     def detail(self, doc_id: str) -> DocumentDetail:
         document = self.source.get_metadata(doc_id)

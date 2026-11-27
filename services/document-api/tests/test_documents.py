@@ -180,3 +180,22 @@ def test_rename_keeps_extension_and_detects_conflicts(client: TestClient) -> Non
     assert client.patch(f"/documents/{first['id']}", json={"name": "ACTA DE ENERO 2026"}).is_success
     assert client.patch(f"/documents/{first['id']}", json={"name": "../.."}).status_code == 422
     assert client.patch("/documents/doc-nope", json={"name": "x"}).status_code == 404
+
+
+def test_reclassify_and_soft_delete(client: TestClient) -> None:
+    doc = upload(client, "Temporal.pdf", PDF).json()
+    r = client.patch(f"/documents/{doc['id']}", json={"classification": "CONFIDENTIAL"})
+    assert r.status_code == 200 and r.json()["classification"] == "CONFIDENTIAL"
+    assert r.json()["filename"] == "Temporal.pdf"
+    before = {lib["id"]: lib["document_count"] for lib in client.get("/libraries").json()}
+
+    assert client.delete(f"/documents/{doc['id']}").status_code == 204
+    assert client.get(f"/documents/{doc['id']}").status_code == 404
+    assert client.get(f"/documents/{doc['id']}/content").status_code == 404
+    assert client.delete(f"/documents/{doc['id']}").status_code == 404
+    listed = client.get("/documents", params={"library_id": "operaciones"}).json()["items"]
+    assert doc["id"] not in {d["id"] for d in listed}
+    after = {lib["id"]: lib["document_count"] for lib in client.get("/libraries").json()}
+    assert after["operaciones"] == before["operaciones"] - 1
+    # El nombre queda libre para volver a subir.
+    assert upload(client, "Temporal.pdf", PDF).status_code == 201

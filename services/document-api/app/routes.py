@@ -25,7 +25,7 @@ from app.schemas import (
     Classification,
     DocumentMeta,
     DocumentPage,
-    DocumentRename,
+    DocumentUpdate,
     FolderCreate,
     FolderOut,
     LibraryOut,
@@ -199,12 +199,17 @@ def get_document(doc_id: str, db: DbDep) -> DocumentMeta:
     tags=["documents"],
     responses={409: {"description": "name_conflict: ya existe ese nombre en la carpeta"}},
 )
-def rename_document(
-    doc_id: str, body: DocumentRename, db: DbDep, actor: ActorDep
+def update_document(
+    doc_id: str, body: DocumentUpdate, db: DbDep, actor: ActorDep
 ) -> DocumentMeta | JSONResponse:
-    """Renombra el archivo (no crea versión). La bitácora del cambio la registra share-api."""
+    """Renombra y/o reclasifica (no crea versión). La bitácora la registra share-api."""
     try:
-        doc = repo.rename_document(db, repo.get_document(db, doc_id), body.name)
+        doc = repo.update_document(
+            db,
+            repo.get_document(db, doc_id),
+            name=body.name,
+            classification=body.classification,
+        )
     except repo.NotFound as exc:
         raise _not_found(exc) from exc
     except repo.NameConflict as exc:
@@ -216,6 +221,16 @@ def rename_document(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     del actor  # la autoría queda en la auditoría de share-api (X-Acting-User se exige igual)
     return repo.to_meta(doc)
+
+
+@router.delete("/documents/{doc_id}", status_code=204, tags=["documents"])
+def delete_document(doc_id: str, db: DbDep, actor: ActorDep) -> Response:
+    """Eliminación lógica: deja de listarse y servirse; versiones y metadata se conservan."""
+    try:
+        repo.delete_document(db, repo.get_document(db, doc_id), actor)
+    except repo.NotFound as exc:
+        raise _not_found(exc) from exc
+    return Response(status_code=204)
 
 
 @router.get("/documents/{doc_id}/versions", response_model=list[VersionOut], tags=["documents"])

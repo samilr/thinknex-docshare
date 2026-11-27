@@ -46,7 +46,7 @@ from app.schemas import (
     ShareRequest,
 )
 from app.sensitivity.checker import SensitivityChecker, SensitivityReport
-from app.services import audit_service, messages, notifications
+from app.services import audit_service, messages, notifications, policy_service
 from app.services.context import RequestContext
 
 ShareScope = Literal["mine", "all"]
@@ -80,7 +80,11 @@ class ShareService:
         return meta, content
 
     def _analyze(
-        self, meta: SourceDocument, content: bytes, is_external: bool
+        self,
+        meta: SourceDocument,
+        content: bytes,
+        is_external: bool,
+        channel: Channel | None = None,
     ) -> SensitivityReport:
         return self.checker.check(
             content=content,
@@ -88,6 +92,8 @@ class ShareService:
             title=meta.title,
             classification=meta.classification,
             is_external=is_external,
+            rules=policy_service.active_rules(self.db),
+            channel=channel.value if channel else None,
         )
 
     def _upsert_document(self, meta: SourceDocument, content: bytes) -> Document:
@@ -144,12 +150,15 @@ class ShareService:
         document_id: str,
         recipient: RecipientIn | None,
         audience: Audience = Audience.SPECIFIC,
+        channel: Channel | None = None,
     ) -> PrecheckResponse:
         meta, content = self._fetch_verified(document_id)
         is_external = audience is Audience.ANYONE or (
             recipient is not None and self._is_external(recipient)
         )
-        report = apply_link_policy(self._analyze(meta, content, is_external), audience, None)
+        report = apply_link_policy(
+            self._analyze(meta, content, is_external, channel), audience, None
+        )
         return PrecheckResponse(document=meta, report=report)
 
     def create(self, user: User, req: ShareRequest, ctx: RequestContext) -> ShareOut:
@@ -169,7 +178,7 @@ class ShareService:
         )
         meta, content = self._fetch_verified(req.document_id)
         report = apply_link_policy(
-            self._analyze(meta, content, is_external), req.audience, req.permission
+            self._analyze(meta, content, is_external, req.channel), req.audience, req.permission
         )
         audit_service.record(
             self.db,
