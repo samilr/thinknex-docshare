@@ -40,7 +40,10 @@ def get_db(components: ComponentsDep) -> Iterator[Session]:
     yield from session_scope(components.session_factory)
 
 
-DbDep = Annotated[Session, Depends(get_db)]
+# scope="function": el commit ocurre antes de enviar la respuesta. Con el scope por defecto
+# FastAPI cierra la dependencia DESPUÉS de responder, así que un cliente podía leer antes del commit
+# (o recibir 2xx aunque el commit fallara).
+DbDep = Annotated[Session, Depends(get_db, scope="function")]
 
 
 def get_request_context(request: Request) -> RequestContext:

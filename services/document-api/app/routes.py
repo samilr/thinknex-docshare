@@ -65,7 +65,8 @@ def acting_user(x_acting_user: Annotated[str | None, Header()] = None) -> str:
 
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
-DbDep = Annotated[Session, Depends(_db)]
+# scope="function": commit antes de responder (ver share-api/app/api/deps.py).
+DbDep = Annotated[Session, Depends(_db, scope="function")]
 StoreDep = Annotated[BlobStore, Depends(_store)]
 ActorDep = Annotated[str, Depends(acting_user)]
 
