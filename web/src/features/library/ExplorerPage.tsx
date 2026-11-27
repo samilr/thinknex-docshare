@@ -159,7 +159,7 @@ export function ExplorerPage() {
   const [versionFor, setVersionFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<LibraryDocument | null>(null);
   const { user, hasRole } = useAuth();
-  const canShare = hasRole("SHARER");
+  const canShare = hasRole("SHARER", "ADMIN");
   const canDelete = (doc: LibraryDocument) => hasRole("ADMIN") || doc.created_by === user?.email;
   const confirmDelete = (doc: LibraryDocument) =>
     modals.openConfirmModal({

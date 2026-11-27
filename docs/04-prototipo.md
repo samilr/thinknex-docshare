@@ -56,7 +56,7 @@ make down                # o `make reset` para borrar también los datos
 
 | Usuario | Rol | Puede |
 |---|---|---|
-| `admin@thinknex.example` | ADMIN | Usuarios y roles, todos los envíos (revocar), bandeja simulada, retención |
+| `admin@thinknex.example` | ADMIN | Usuarios y roles, políticas, biblioteca completa, compartir, todos los envíos (revocar), bandeja simulada, retención |
 | `ana@thinknex.example` | SHARER | Compartir, listar y revocar sus shares |
 | `bruno@thinknex.example` | SHARER | Igual que Ana (para probar que no puede revocar lo de Ana) |
 | `carla@thinknex.example` | AUDITOR | Consultar y verificar la auditoría |
@@ -107,7 +107,7 @@ Terraform (ver el README).
    pidiéndola. También se pueden crear reglas, por ejemplo "Confidenciales nunca por WhatsApp"
    (Bloquear, clasificación Confidencial, medio WhatsApp). El AUDITOR ve la página en solo lectura.
    El admin también entra a *Documentos*: sube, edita (nombre y **clasificación**) y **elimina**
-   archivos. Eliminar revoca los envíos activos del archivo.
+   archivos, y también puede compartirlos. Eliminar revoca los envíos activos del archivo.
 5. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
    el nuevo usuario debe cambiarla al entrar.
 6. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y

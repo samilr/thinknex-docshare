@@ -8,8 +8,8 @@ from app.api.deps import (
     ContextDep,
     DbDep,
     RevokerDep,
-    SharerDep,
     ShareServiceDep,
+    SharingDep,
 )
 from app.api.v1.audit import events_out
 from app.domain.enums import Channel, ShareStatus
@@ -33,14 +33,14 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 
 
 @router.post("/precheck", response_model=PrecheckResponse, responses=_ERRORS)
-def precheck(body: PrecheckRequest, user: SharerDep, service: ShareServiceDep) -> PrecheckResponse:
+def precheck(body: PrecheckRequest, user: SharingDep, service: ShareServiceDep) -> PrecheckResponse:
     """Evalúa la sensibilidad sin compartir: permite a la interfaz advertir antes de enviar."""
     return service.precheck(user, body.document_id, body.recipient, body.audience, body.channel)
 
 
 @router.post("", response_model=ShareOut, status_code=status.HTTP_201_CREATED, responses=_ERRORS)
 def create_share(
-    body: ShareRequest, user: SharerDep, service: ShareServiceDep, ctx: ContextDep
+    body: ShareRequest, user: SharingDep, service: ShareServiceDep, ctx: ContextDep
 ) -> ShareOut:
     """Comparte un documento. El enlace se envía SOLO al destinatario; nunca se devuelve aquí."""
     return service.create(user, body, ctx)

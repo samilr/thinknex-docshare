@@ -131,7 +131,7 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await page.getByRole("link", { name: /^Comercial/ }).click();
   await page.getByText("Certificados", { exact: true }).click();
   await page.getByRole("button", { name: `Acciones de ${finalName}` }).click();
-  await expect(page.getByRole("menuitem", { name: "Compartir" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Compartir" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Eliminar" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Eliminar" }).click();
   await expect(page.getByText(/Archivo eliminado y 1 envío\(s\) revocado\(s\)/)).toBeVisible();

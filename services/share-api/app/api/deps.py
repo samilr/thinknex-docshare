@@ -111,6 +111,7 @@ AdminDep = Annotated[User, Depends(require_roles(Role.ADMIN))]
 OversightDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.AUDITOR))]
 AnyRoleDep = Annotated[User, Depends(require_roles(Role.ADMIN, Role.SHARER, Role.AUDITOR))]
 RevokerDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
+SharingDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
 # Biblioteca: quienes comparten y el ADMIN (que administra archivos aunque no comparta).
 LibraryUserDep = Annotated[User, Depends(require_roles(Role.SHARER, Role.ADMIN))]
 

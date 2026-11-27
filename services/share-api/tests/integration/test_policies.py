@@ -186,3 +186,18 @@ def test_uploader_can_delete_own_file(api: Api) -> None:
     doc_id = r.json()["document"]["id"]
     deleted = api.client.delete(f"/api/v1/library/documents/{doc_id}", headers=ana)
     assert deleted.status_code == 200 and deleted.json()["revoked_shares"] == 0
+
+
+def test_admin_can_share(api: Api) -> None:
+    r = api.client.post(
+        "/api/v1/shares",
+        json={
+            "document_id": "doc-public",
+            "recipient": EXTERNAL,
+            "channel": "EMAIL",
+            "reason": "Envío desde administración",
+        },
+        headers=api.admin_headers(),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["shared_by"] == "admin@thinknex.example"

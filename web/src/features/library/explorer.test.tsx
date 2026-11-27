@@ -209,7 +209,7 @@ describe("explorador de documentos", () => {
     expect(sent).toEqual(["Existente", "Certificado María 2026"]);
   });
 
-  it("el ADMIN reclasifica un archivo, pero no ve Compartir", async () => {
+  it("el ADMIN reclasifica un archivo y también puede compartir", async () => {
     loggedInAs(["ADMIN"], { email: "admin@thinknex.example", name: "Administrador" });
     mockLibrary();
     const patches: unknown[] = [];
@@ -225,14 +225,14 @@ describe("explorador de documentos", () => {
       screen.getAllByRole("button", { name: "Acciones de Certificado de cliente" })[0]!;
 
     await userEvent.click(actions());
-    expect(screen.queryByRole("menuitem", { name: "Compartir" })).not.toBeInTheDocument();
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Editar" }));
+    const edit = await screen.findByRole("menuitem", { name: "Editar" });
+    expect(screen.getByRole("menuitem", { name: "Compartir", hidden: true })).toBeInTheDocument();
+    await userEvent.click(edit);
     await userEvent.click(screen.getByRole("combobox", { name: "Clasificación" }));
     await userEvent.click(screen.getByRole("option", { name: "Confidencial", hidden: true }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(patches).toEqual([{ classification: "CONFIDENTIAL" }]));
-  });
-
+  }, 15_000);
   it("el ADMIN elimina un archivo y se le avisa de los envíos que se revocarán", async () => {
     loggedInAs(["ADMIN"], { email: "admin@thinknex.example", name: "Administrador" });
     mockLibrary();

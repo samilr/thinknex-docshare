@@ -3,14 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 
 from app.adapters.document_source import SourcePage
-from app.api.deps import ComponentsDep, SharerDep
+from app.api.deps import ComponentsDep, SharingDep
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 @router.get("", response_model=SourcePage)
 def list_documents(
-    _: SharerDep,
+    _: SharingDep,
     components: ComponentsDep,
     q: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
