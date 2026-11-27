@@ -1,10 +1,9 @@
 import {
   ActionIcon,
-  Alert,
+  Anchor,
   AppShell,
   Avatar,
   Burger,
-  Button,
   Group,
   Menu,
   NavLink,
@@ -37,6 +36,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { RoleBadge } from "../components/badges";
 import { EnvironmentBadge } from "../components/EnvironmentBadge";
 import { type Role, useAuth } from "../auth/context";
+import { labelOf, ROLE } from "../lib/labels";
 
 interface NavItem {
   to: string;
@@ -79,15 +79,17 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const items = NAV_ITEMS.filter((item) => !item.roles || hasRole(...item.roles));
+  const impersonating = !!user?.impersonator;
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: 60 + (impersonating ? IMPERSONATION_BAR : 0) }}
       navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !opened } }}
       padding="lg"
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        {impersonating && <ImpersonationBar />}
+        <Group h={60} px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menú" />
             <IconShieldLock size={26} color="var(--mantine-primary-color-filled)" />
@@ -166,7 +168,6 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        {user?.impersonator && <ImpersonationBanner />}
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>
@@ -175,36 +176,50 @@ export function AppLayout() {
   );
 }
 
-function ImpersonationBanner() {
+const IMPERSONATION_BAR = 34;
+
+function ImpersonationBar() {
   const { user, stopImpersonation } = useAuth();
   const navigate = useNavigate();
   const [leaving, setLeaving] = useState(false);
   if (!user?.impersonator) return null;
+  const roles = user.roles.map((r) => labelOf(ROLE, r).label).join(", ");
   return (
-    <Alert
-      color="orange"
-      variant="filled"
-      mb="md"
-      icon={<IconUserShare size={18} />}
-      title={`Actuando como ${user.name} (${user.email})`}
+    <Group
+      h={IMPERSONATION_BAR}
+      px="md"
+      gap="xs"
+      justify="center"
+      wrap="nowrap"
+      bg="var(--mantine-color-yellow-6)"
+      c="dark.9"
+      role="status"
+      style={{ whiteSpace: "nowrap", overflow: "hidden" }}
     >
-      <Group justify="space-between" wrap="wrap" gap="xs">
-        <Text size="sm">Sesión iniciada por {user.impersonator.name}.</Text>
-        <Button
-          size="xs"
-          variant="white"
-          color="orange"
-          loading={leaving}
-          onClick={() => {
-            setLeaving(true);
-            void stopImpersonation()
-              .then(() => navigate("/usuarios"))
-              .finally(() => setLeaving(false));
-          }}
-        >
-          Volver a mi cuenta
-        </Button>
-      </Group>
-    </Alert>
+      <IconUserShare size={16} style={{ flexShrink: 0 }} />
+      <Text size="sm" fw={600} truncate="end">
+        Estás actuando como {user.name} ({roles})
+      </Text>
+      <Text size="sm" fw={600} visibleFrom="xs">
+        —
+      </Text>
+      <Anchor
+        component="button"
+        size="sm"
+        fw={700}
+        c="dark.9"
+        underline="always"
+        disabled={leaving}
+        style={{ flexShrink: 0 }}
+        onClick={() => {
+          setLeaving(true);
+          void stopImpersonation()
+            .then(() => navigate("/usuarios"))
+            .finally(() => setLeaving(false));
+        }}
+      >
+        Volver a mi cuenta
+      </Anchor>
+    </Group>
   );
 }

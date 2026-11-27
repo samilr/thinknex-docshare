@@ -15,18 +15,22 @@ test("el administrador actúa como otro usuario y vuelve a su cuenta", async ({ 
   await page.getByRole("menuitem", { name: "Actuar como este usuario" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Actuar como" }).click();
 
-  await expect(page.getByText("Actuando como Ana Rojas (ana@thinknex.example)")).toBeVisible();
+  await expect(page.getByText("Estás actuando como Ana Rojas (Emisor)")).toBeVisible();
   await expect(page.getByText("Hola, Ana")).toBeVisible();
+  if (process.env.SCREENSHOTS_DIR) {
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${process.env.SCREENSHOTS_DIR}/14-actuando-como.png` });
+  }
   await expect(page.getByRole("link", { name: "Usuarios", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Envíos", exact: true }).click();
-  await expect(page.getByText("Actuando como Ana Rojas (ana@thinknex.example)")).toBeVisible();
+  await expect(page.getByText("Estás actuando como Ana Rojas (Emisor)")).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Actuando como Ana Rojas (ana@thinknex.example)")).toBeVisible();
+  await expect(page.getByText("Estás actuando como Ana Rojas (Emisor)")).toBeVisible();
 
   await page.getByRole("button", { name: "Volver a mi cuenta" }).click();
   await expect(page.getByRole("link", { name: "Usuarios", exact: true })).toBeVisible();
-  await expect(page.getByText(/Actuando como/)).toHaveCount(0);
+  await expect(page.getByText(/actuando como/i)).toHaveCount(0);
 
   await page.getByRole("link", { name: "Auditoría", exact: true }).click();
   await page.getByRole("combobox", { name: "Evento" }).click();
