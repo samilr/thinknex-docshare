@@ -4,6 +4,7 @@ import { RequireAuth, RequireRoles } from "./auth/guards";
 import { AppLayout } from "./layout/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { RouteErrorPage } from "./pages/RouteErrorPage";
 
 const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const ChangePasswordPage = lazy(() =>
@@ -22,9 +23,10 @@ const SharesPage = lazy(() =>
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 
 export const routes: RouteObject[] = [
-  { path: "/login", element: <LoginPage /> },
+  { path: "/login", element: <LoginPage />, errorElement: <RouteErrorPage /> },
   {
     path: "/",
+    errorElement: <RouteErrorPage />,
     element: (
       <RequireAuth>
         <AppLayout />
