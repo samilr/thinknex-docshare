@@ -62,7 +62,7 @@ make down                # o `make reset` para borrar también los datos
 
 | Usuario | Rol | Puede |
 |---|---|---|
-| `admin@thinknex.example` | ADMIN | Usuarios y roles, políticas, biblioteca completa, compartir, todos los envíos (revocar), bandeja simulada, retención |
+| `admin@thinknex.example` | ADMIN | Usuarios y roles, actuar como otro usuario, políticas, biblioteca completa, compartir, todos los envíos (revocar), auditoría, bandeja simulada, retención |
 | `ana@thinknex.example` | SHARER | Compartir, listar y revocar sus shares |
 | `bruno@thinknex.example` | SHARER | Igual que Ana (para probar que no puede revocar lo de Ana) |
 | `carla@thinknex.example` | AUDITOR | Consultar y verificar la auditoría |

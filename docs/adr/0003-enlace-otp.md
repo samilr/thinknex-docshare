@@ -15,6 +15,15 @@ sin exigirle registro.
 3. El OTP correcto entrega un JWT de descarga de 5 min (`typ=download`, `sub=share_id`).
 4. Cada descarga consume un acceso con un `UPDATE ... WHERE access_count < max_accesses` atómico.
 
+## Alternativas descartadas
+- **Enlace mágico sin OTP:** quien reciba un reenvío accede al documento.
+- **Cuentas para los destinatarios externos:** fricción alta para un acceso puntual y otra base de
+  identidades que administrar.
+- **Adjuntar el archivo cifrado y enviar la clave por otro medio:** el archivo sale igual, no se
+  puede revocar y no hay registro de acceso.
+- **OTP por un segundo canal:** más seguro, pero exige dos datos de contacto por destinatario.
+  Queda en el roadmap.
+
 ## Consecuencias
 - Un enlace reenviado no basta: el tercero no recibe el OTP.
 - Los previsualizadores automáticos no consumen accesos, porque el GET es de solo lectura.

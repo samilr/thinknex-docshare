@@ -17,11 +17,11 @@ apunta a ese snapshot.
 - **Storage local:** SeaweedFS (S3-compatible). Se descartó MinIO porque sus imágenes públicas ya
   no están disponibles. En la nube: S3, Azure Blob o GCS con cifrado KMS.
 
-## Alternativa descartada
-Proxy en vivo al DMS: si el documento cambia, el destinatario recibe algo distinto de lo que se
-compartió y la auditoría pierde valor probatorio. Además, el acceso depende de que el DMS esté
-disponible. Si el DMS ofreciera versiones inmutables con ID, guardar `source_id + version + hash`
-sería una opción válida sin duplicar datos.
+## Alternativas descartadas
+- **Proxy en vivo al DMS:** si el documento cambia, el destinatario recibe algo distinto de lo que se
+  compartió y la auditoría pierde valor probatorio. Además, el acceso depende de que el DMS esté
+  disponible. Si el DMS ofreciera versiones inmutables con ID, guardar `source_id + version + hash`
+  sería una opción válida sin duplicar datos.
 
 ## Consecuencias
 Existe una segunda copia de información sensible, mitigada con una retención corta y el cifrado

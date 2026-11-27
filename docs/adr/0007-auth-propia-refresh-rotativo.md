@@ -16,10 +16,11 @@ cuentas en un tenant corporativo.
   |---|---|
   | SHARER | Compartir y revocar sus envíos |
   | AUDITOR | Leer la auditoría y todos los envíos |
-  | ADMIN | Usuarios, todos los envíos, bandeja y retención |
+  | ADMIN | Usuarios, políticas, biblioteca completa, todos los envíos, auditoría, bandeja y retención |
 
-  **Separación de funciones:** el ADMIN no lee la auditoría por defecto, porque sus propias
-  acciones quedan registradas allí.
+  **Supervisión:** ADMIN y AUDITOR leen la auditoría; el AUDITOR no puede modificar nada. Las
+  acciones del ADMIN quedan registradas como las de cualquier otro usuario, y la cadena de hash
+  (ADR-0004) impide alterarlas o borrarlas.
 - **Sesión:**
   - Access token JWT de 15 minutos, que el cliente guarda **solo en memoria**.
   - Refresh token opaco en una cookie `httpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`.
@@ -31,6 +32,15 @@ cuentas en un tenant corporativo.
   desactivar a alguien corta su acceso de inmediato. El frontend solo oculta lo que no corresponde.
 - **Protección contra quedarse sin administradores:** la API impide quitarse a sí mismo el rol
   ADMIN o desactivarse, y exige que siempre quede al menos un ADMIN activo.
+
+## Alternativas descartadas
+- **IdP corporativo (Entra ID, Google Workspace) ya en la demo:** obliga a los evaluadores a tener
+  cuentas en un tenant. Queda como camino a producción.
+- **Servicio de identidad gestionado (Identity Platform, Auth0):** otra dependencia y otra
+  configuración para un alcance de tres roles.
+- **JWT de larga duración sin refresh:** no se puede revocar una sesión antes de que venza.
+- **Tokens en `localStorage`:** expuestos ante cualquier XSS. El access token vive solo en
+  memoria y el refresh en una cookie `httpOnly`.
 
 ## Camino a producción
 Reemplazar el login por **OIDC (Microsoft Entra ID o Google Workspace)** y mapear grupos a roles.

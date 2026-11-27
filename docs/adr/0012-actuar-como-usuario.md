@@ -3,9 +3,9 @@
 **Estado:** aceptada
 
 ## Contexto
-Para probar la plataforma se necesitaba entrar con varias cuentas (emisora, auditora y
-administrador). El administrador necesita asumir la identidad de otro usuario y hacer todo
-como él desde un solo perfil.
+Soporte y QA necesitan reproducir lo que ve y puede hacer un usuario concreto (emisora, auditora)
+sin conocer su contraseña. Iniciar sesión con varias cuentas no escala, y reiniciar contraseñas
+ajenas rompe la trazabilidad.
 
 ## Decisión
 - **Inicio:** `POST /api/v1/auth/impersonate` (solo ADMIN, con el header anti-CSRF). Cierra la
@@ -28,6 +28,13 @@ como él desde un solo perfil.
 - **Portal:**
   - *Usuarios → Actuar como este usuario*;
   - mientras dura, un aviso fijo muestra "Actuando como …" con el botón **Volver a mi cuenta**.
+
+## Alternativas descartadas
+- **Compartir o reiniciar la contraseña del usuario:** la auditoría no distingue al administrador
+  del usuario real.
+- **Modo "ver como" de solo lectura:** no permite probar acciones como compartir o revocar.
+- **Token del administrador con los roles del usuario:** mezcla identidades. Los permisos por
+  dueño (mis envíos, mis documentos) dejarían de funcionar.
 
 ## Consecuencias
 - La responsabilidad queda trazada: nada de lo hecho por el administrador se confunde con una
