@@ -16,7 +16,7 @@ def admin_headers(api: Api) -> dict[str, str]:
 
 
 def new_email() -> str:
-    return f"nuevo-{uuid.uuid4().hex[:6]}@demo-corp.example"
+    return f"nuevo-{uuid.uuid4().hex[:6]}@thinknex.example"
 
 
 def test_admin_user_lifecycle(api: Api) -> None:
@@ -79,7 +79,7 @@ def test_admin_cannot_lock_themselves_out(api: Api) -> None:
 
 
 def test_admin_endpoints_require_admin(api: Api) -> None:
-    for email in ("ana@demo-corp.example", "carla@demo-corp.example"):
+    for email in ("ana@thinknex.example", "carla@thinknex.example"):
         headers = api.headers(email)
         assert api.client.get("/api/v1/admin/users", headers=headers).status_code == 403
         assert api.client.get("/api/v1/admin/inbox", headers=headers).status_code == 403
@@ -89,8 +89,8 @@ def test_share_visibility_by_role(api: Api) -> None:
     share = api.share()  # ana
     sid = share["id"]
     bruno, carla, admin = (
-        api.headers("bruno@demo-corp.example"),
-        api.headers("carla@demo-corp.example"),
+        api.headers("bruno@thinknex.example"),
+        api.headers("carla@thinknex.example"),
         admin_headers(api),
     )
     mine = api.client.get("/api/v1/shares", headers=bruno).json()
@@ -111,12 +111,12 @@ def test_share_visibility_by_role(api: Api) -> None:
 
 def test_share_filters_and_timeline(api: Api) -> None:
     share = api.share(channel="SMS", recipient={"name": "Fono", "phone": "+56 9 5555 6666"})
-    ana = api.headers("ana@demo-corp.example")
+    ana = api.headers("ana@thinknex.example")
     page = api.client.get("/api/v1/shares?channel=SMS&status=ACTIVE", headers=ana).json()
     assert page["total"] >= 1 and all(i["channel"] == "SMS" for i in page["items"])
     timeline = api.client.get(f"/api/v1/shares/{share['id']}/timeline", headers=ana).json()
     assert [e["event_type"] for e in timeline][:2] == ["SHARE_CREATED", "NOTIFICATION_SENT"]
-    assert timeline[0]["actor"] == "Ana Rojas <ana@demo-corp.example>"
+    assert timeline[0]["actor"] == "Ana Rojas <ana@thinknex.example>"
 
 
 def test_inbox_and_stats(api: Api) -> None:
@@ -125,10 +125,10 @@ def test_inbox_and_stats(api: Api) -> None:
     inbox = api.client.get(f"/api/v1/admin/inbox?share_id={share['id']}", headers=admin).json()
     assert inbox["total"] == 1 and "/s/" in inbox["items"][0]["body"]
 
-    mine = api.client.get("/api/v1/stats", headers=api.headers("ana@demo-corp.example")).json()
+    mine = api.client.get("/api/v1/stats", headers=api.headers("ana@thinknex.example")).json()
     assert mine["scope"] == "mine" and mine["shares_total"] >= 1 and mine["users_active"] is None
     assert len(mine["accesses_by_day"]) == 7
-    overall = api.client.get("/api/v1/stats", headers=api.headers("carla@demo-corp.example")).json()
+    overall = api.client.get("/api/v1/stats", headers=api.headers("carla@thinknex.example")).json()
     assert overall["scope"] == "all" and overall["users_active"] >= 4
     assert overall["shares_total"] >= mine["shares_total"]
 

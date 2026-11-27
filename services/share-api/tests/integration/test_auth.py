@@ -13,7 +13,7 @@ PWD = "Valid-password-123"
 
 
 def make_user(api: Api, *, roles: list[str], must_change: bool = False, active: bool = True) -> str:
-    email = f"u-{uuid.uuid4().hex[:8]}@demo-corp.example"
+    email = f"u-{uuid.uuid4().hex[:8]}@thinknex.example"
     with api.components.session_factory() as db, db.begin():
         db.add(
             User(
@@ -78,12 +78,12 @@ def test_wrong_password_locks_account(api: Api) -> None:
 
 def test_unknown_user_gets_same_error_and_is_audited(api: Api) -> None:
     r = api.client.post(
-        "/api/v1/auth/login", json={"email": "nadie@demo-corp.example", "password": "x-1234567"}
+        "/api/v1/auth/login", json={"email": "nadie@thinknex.example", "password": "x-1234567"}
     )
     assert r.status_code == 401
     assert r.json()["detail"] == "Usuario o contraseña inválidos"
     failed = api.audit(event_type="USER_LOGIN_FAILED")
-    assert failed[0]["metadata"]["email"] == "n***@demo-corp.example"  # type: ignore[index]
+    assert failed[0]["metadata"]["email"] == "n***@thinknex.example"  # type: ignore[index]
 
 
 def test_refresh_rotation_and_reuse_detection(api: Api) -> None:

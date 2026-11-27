@@ -17,10 +17,13 @@ router = APIRouter(prefix="/s", tags=["destinatario (público)"])
 _bearer = HTTPBearer(auto_error=False)
 _PAGE = (Path(__file__).parent / "access_page.html").read_text(encoding="utf-8")
 _UNAVAILABLE = (
-    "<!doctype html><html lang=es><meta charset=utf-8><title>Enlace no disponible</title>"
+    "<!doctype html><html lang=es><meta charset=utf-8>"
+    "<title>Enlace no disponible · ThinkNex Docs</title>"
     "<body style='font-family:system-ui;max-width:30rem;margin:3rem auto'>"
     "<h1>Enlace no disponible</h1><p>El enlace no es válido, venció o fue revocado. "
-    "Solicita a quien te lo envió que lo comparta nuevamente.</p></body></html>"
+    "Solicita a quien te lo envió que lo comparta nuevamente.</p>"
+    "<p style='font-size:.75rem;opacity:.6'>ThinkNex Docs · prototipo de prueba técnica</p>"
+    "</body></html>"
 )
 
 

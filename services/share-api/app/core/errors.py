@@ -86,7 +86,7 @@ def problem(
     status: int, code: str, title: str, detail: str, request: Request, **ext: Any
 ) -> JSONResponse:
     body = {
-        "type": f"https://errors.demo-corp.example/{code}",
+        "type": f"https://errors.thinknex.example/{code}",
         "title": title,
         "status": status,
         "detail": detail,

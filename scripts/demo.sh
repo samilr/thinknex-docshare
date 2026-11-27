@@ -28,7 +28,7 @@ last_link()  { inbox | jq -r '[.items[] | select(.kind=="LINK")][0].body' | grep
 last_otp()   { inbox | jq -r '[.items[] | select(.kind=="OTP")][0].body' | grep -oE '[0-9]{6}' | head -1; }
 
 bold "Demo · Compartición segura de documentos"
-ANA=$(login ana@demo-corp.example); CARLA=$(login carla@demo-corp.example)
+ANA=$(login ana@thinknex.example); CARLA=$(login carla@thinknex.example)
 ADMIN=$(curl -sf -X POST "$BASE/api/v1/auth/token" --data-urlencode "username=$BOOTSTRAP_ADMIN_EMAIL" \
   --data-urlencode "password=$BOOTSTRAP_ADMIN_PASSWORD" | jq -r .access_token)
 ok "Login: ana (SHARER), carla (AUDITOR) y el ADMIN (lee la bandeja simulada)"

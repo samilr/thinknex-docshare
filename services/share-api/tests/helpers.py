@@ -35,7 +35,7 @@ class FakeDocumentSource:
             sha256=hashlib.sha256(content).hexdigest(),
             version=1,
             classification=classification,
-            owner="owner@demo-corp.example",
+            owner="owner@thinknex.example",
         )
         self.docs[doc_id] = (meta, content)
 

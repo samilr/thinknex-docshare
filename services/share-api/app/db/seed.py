@@ -17,9 +17,9 @@ from app.db.models import User
 from app.domain.enums import Role
 
 DEMO_USERS = [
-    ("ana@demo-corp.example", "Ana Rojas", [Role.SHARER]),
-    ("bruno@demo-corp.example", "Bruno Díaz", [Role.SHARER]),
-    ("carla@demo-corp.example", "Carla Muñoz", [Role.AUDITOR]),
+    ("ana@thinknex.example", "Ana Rojas", [Role.SHARER]),
+    ("bruno@thinknex.example", "Bruno Díaz", [Role.SHARER]),
+    ("carla@thinknex.example", "Carla Muñoz", [Role.AUDITOR]),
 ]
 
 

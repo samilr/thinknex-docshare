@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Documento compartido</title>
+<title>Documento compartido · ThinkNex Docs</title>
 <style nonce="{nonce}">
   :root { color-scheme: light dark; --accent: #2457d6; }
   body { font: 16px/1.5 system-ui, sans-serif; max-width: 30rem; margin: 3rem auto; padding: 0 1rem; }
@@ -17,9 +17,13 @@
   .row { display: flex; gap: .5rem; align-items: center; margin: 1rem 0; }
   #msg { min-height: 1.5rem; }
   .hidden { display: none; }
+  .brand { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; display: flex; gap: .4rem; align-items: center; }
+  .brand span { color: var(--accent); }
+  .notice { margin-top: 1.5rem; font-size: .75rem; opacity: .6; text-align: center; }
 </style>
 </head>
 <body>
+<div class="brand"><span>&#9670;</span> ThinkNex Docs</div>
 <main class="card">
   <h1>{shared_by} compartió un documento contigo</h1>
   <p class="muted">Por seguridad, verificaremos tu identidad con un código enviado a <strong>{destination}</strong> ({channel}). El enlace vence el {expires_at} UTC.</p>
@@ -31,6 +35,7 @@
   <p id="msg" role="status"></p>
   <p class="muted">La descarga queda registrada e incluye una marca de agua con tu nombre.</p>
 </main>
+<p class="notice">Prototipo de prueba técnica · datos ficticios · no es un servicio oficial de ThinkNex.</p>
 <script nonce="{nonce}">
   const base = location.pathname.replace(/\/$/, "");
   const msg = (t) => (document.getElementById("msg").textContent = t);

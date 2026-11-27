@@ -3,7 +3,6 @@ import {
   Anchor,
   Button,
   Center,
-  Code,
   Paper,
   PasswordInput,
   Stack,
@@ -19,9 +18,9 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/context";
 
 const DEMO_ACCOUNTS = [
-  ["admin@demo-corp.example", "Administrador"],
-  ["ana@demo-corp.example", "Emisora"],
-  ["carla@demo-corp.example", "Auditora"],
+  ["admin@thinknex.example", "Administrador"],
+  ["ana@thinknex.example", "Emisora"],
+  ["carla@thinknex.example", "Auditora"],
 ] as const;
 
 export function LoginPage() {
@@ -61,9 +60,10 @@ export function LoginPage() {
           <ThemeIcon size={56} radius="xl" variant="light">
             <IconShieldLock size={32} />
           </ThemeIcon>
-          <Title order={2}>Documentos Seguros</Title>
+          <Title order={2}>ThinkNex Docs</Title>
           <Text c="dimmed" size="sm" ta="center">
-            Comparte documentos con trazabilidad completa: quién, cuándo y por qué medio.
+            Compartición segura de documentos con trazabilidad completa: quién, cuándo y por qué
+            medio.
           </Text>
         </Stack>
         <Paper withBorder shadow="sm" p="xl" radius="lg">
@@ -80,7 +80,7 @@ export function LoginPage() {
               )}
               <TextInput
                 label="Email"
-                placeholder="usuario@empresa.cl"
+                placeholder="usuario@thinknex.example"
                 autoComplete="username"
                 autoFocus
                 {...form.getInputProps("email")}
@@ -118,10 +118,13 @@ export function LoginPage() {
               ))}
             </Stack>
             <Text size="xs" c="dimmed" mt={6}>
-              Las contraseñas están en la documentación de la entrega (<Code>README</Code>).
+              Las contraseñas se entregan junto con la documentación de la prueba.
             </Text>
           </Paper>
         )}
+        <Text size="xs" c="dimmed" ta="center">
+          Prototipo de prueba técnica · datos ficticios · no es un servicio oficial de ThinkNex.
+        </Text>
       </Stack>
     </Center>
   );

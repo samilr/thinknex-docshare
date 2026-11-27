@@ -86,7 +86,7 @@ export function AppLayout() {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menú" />
             <IconShieldLock size={26} color="var(--mantine-primary-color-filled)" />
             <Text fw={700} size="lg">
-              Documentos Seguros
+              ThinkNex Docs
             </Text>
           </Group>
           <Group gap="sm">
@@ -154,6 +154,9 @@ export function AppLayout() {
         <AppShell.Section>
           <Text size="xs" c="dimmed" px="sm">
             Toda acción queda registrada en una auditoría inmutable.
+          </Text>
+          <Text size="xs" c="dimmed" px="sm" mt={6}>
+            ThinkNex Docs · prototipo de prueba técnica con datos ficticios.
           </Text>
         </AppShell.Section>
       </AppShell.Navbar>

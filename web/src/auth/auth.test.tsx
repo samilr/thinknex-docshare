@@ -19,7 +19,7 @@ describe("autenticación y roles", () => {
       ),
     );
     renderApp("/login");
-    await userEvent.type(await screen.findByLabelText("Email"), "ana@demo-corp.example");
+    await userEvent.type(await screen.findByLabelText("Email"), "ana@thinknex.example");
     await userEvent.type(screen.getByLabelText("Contraseña"), "incorrecta");
     await userEvent.click(screen.getByRole("button", { name: "Ingresar" }));
     expect(await screen.findByText("Usuario o contraseña inválidos")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("autenticación y roles", () => {
       http.get("*/api/v1/stats", () => HttpResponse.json(emptyStats)),
     );
     renderApp("/login");
-    await userEvent.type(await screen.findByLabelText("Email"), "ana@demo-corp.example");
+    await userEvent.type(await screen.findByLabelText("Email"), "ana@thinknex.example");
     await userEvent.type(screen.getByLabelText("Contraseña"), "Demo-pass-2026");
     await userEvent.click(screen.getByRole("button", { name: "Ingresar" }));
     expect(await screen.findByText("Hola, Ana")).toBeInTheDocument();

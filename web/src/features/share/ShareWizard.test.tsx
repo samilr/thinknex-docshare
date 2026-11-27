@@ -16,7 +16,7 @@ const document = {
   sha256: "a".repeat(64),
   version: 1,
   classification: "INTERNAL" as const,
-  owner: "comercial@demo-corp.example",
+  owner: "comercial@thinknex.example",
 };
 
 const warnReport = {
@@ -62,7 +62,7 @@ describe("ShareWizard", () => {
               classification: "INTERNAL",
             },
             recipient: { name: "María", contact: "m***@cliente.example", is_external: true },
-            shared_by: "ana@demo-corp.example",
+            shared_by: "ana@thinknex.example",
             channel: "EMAIL",
             reason: "Certificado solicitado",
             status: "ACTIVE",

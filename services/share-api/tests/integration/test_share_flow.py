@@ -48,14 +48,14 @@ def test_end_to_end_email_share(api: Api) -> None:
     created = events[-1]
     assert created["channel"] == "EMAIL"
     assert created["actor_type"] == "USER"
-    assert created["actor"] == "Ana Rojas <ana@demo-corp.example>"
+    assert created["actor"] == "Ana Rojas <ana@thinknex.example>"
     assert events[0]["actor"] == "Pedro Externo <p***@cliente.example>"
     assert created["metadata"]["reason"] == "Envío de catálogo solicitado"  # type: ignore[index]
     accessed = events[0]
     assert accessed["actor_type"] == "RECIPIENT"
     assert accessed["metadata"]["watermarked"] is True  # type: ignore[index]
 
-    verify = api.client.get("/api/v1/audit/verify", headers=api.headers("carla@demo-corp.example"))
+    verify = api.client.get("/api/v1/audit/verify", headers=api.headers("carla@thinknex.example"))
     assert verify.json()["valid"] is True
 
 
@@ -66,7 +66,7 @@ def test_sensitive_document_requires_acknowledgement(api: Api) -> None:
         "channel": "WHATSAPP",
         "reason": "Certificado solicitado por el cliente",
     }
-    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("ana@demo-corp.example"))
+    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("ana@thinknex.example"))
     assert r.status_code == 409
     assert r.headers["content-type"] == "application/problem+json"
     finding_types = {f["type"] for f in r.json()["report"]["findings"]}
@@ -87,7 +87,7 @@ def test_restricted_to_external_is_blocked_and_audited(api: Api) -> None:
         "reason": "intento",
         "acknowledge_sensitive": True,
     }
-    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("bruno@demo-corp.example"))
+    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("bruno@thinknex.example"))
     assert r.status_code == 403
     blocked = api.audit(event_type="SHARE_BLOCKED")
     assert blocked and blocked[0]["channel"] == "EMAIL"
@@ -98,11 +98,11 @@ def test_restricted_to_external_is_blocked_and_audited(api: Api) -> None:
 def test_restricted_to_internal_warns(api: Api) -> None:
     body = {
         "document_id": "doc-restricted",
-        "recipient": {"name": "Carla", "email": "carla@demo-corp.example"},
+        "recipient": {"name": "Carla", "email": "carla@thinknex.example"},
         "channel": "EMAIL",
         "reason": "Revisión interna",
     }
-    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("ana@demo-corp.example"))
+    r = api.client.post("/api/v1/shares", json=body, headers=api.headers("ana@thinknex.example"))
     assert r.status_code == 409
 
 
@@ -120,7 +120,7 @@ def test_wrong_otp_locks_share(api: Api) -> None:
     assert r.status_code == 404
     assert api.client.post(f"/s/{token}/verify", json={"code": good}).status_code == 404
     detail = api.client.get(
-        f"/api/v1/shares/{share['id']}", headers=api.headers("ana@demo-corp.example")
+        f"/api/v1/shares/{share['id']}", headers=api.headers("ana@thinknex.example")
     )
     assert detail.json()["status"] == "LOCKED"
 
@@ -142,7 +142,7 @@ def test_download_requires_verified_otp(api: Api) -> None:
     assert api.client.get(f"/s/{token}/download").status_code == 404
     other_token = api.client.post(
         "/api/v1/auth/token",
-        data={"username": "ana@demo-corp.example", "password": "integration-password-1"},
+        data={"username": "ana@thinknex.example", "password": "integration-password-1"},
     ).json()["access_token"]
     r = api.client.get(f"/s/{token}/download", headers={"Authorization": f"Bearer {other_token}"})
     assert r.status_code == 404, "un JWT de usuario interno no sirve como token de descarga"
@@ -152,10 +152,10 @@ def test_revocation(api: Api) -> None:
     share = api.share()
     token = api.last_link_token()
     url = f"/api/v1/shares/{share['id']}/revoke"
-    assert api.client.post(url, headers=api.headers("bruno@demo-corp.example")).status_code == 404
-    r = api.client.post(url, headers=api.headers("ana@demo-corp.example"))
+    assert api.client.post(url, headers=api.headers("bruno@thinknex.example")).status_code == 404
+    r = api.client.post(url, headers=api.headers("ana@thinknex.example"))
     assert r.status_code == 200 and r.json()["status"] == "REVOKED"
-    assert api.client.post(url, headers=api.headers("ana@demo-corp.example")).status_code == 409
+    assert api.client.post(url, headers=api.headers("ana@thinknex.example")).status_code == 409
     landing = api.client.get(f"/s/{token}")
     assert landing.status_code == 404 and "Enlace no disponible" in landing.text
     assert api.client.post(f"/s/{token}/otp").status_code == 404
@@ -191,11 +191,11 @@ def test_role_enforcement(api: Api) -> None:
             "channel": "EMAIL",
             "reason": "test",
         },
-        headers=api.headers("carla@demo-corp.example"),
+        headers=api.headers("carla@thinknex.example"),
     )
     assert r.status_code == 403
     assert (
-        api.client.get("/api/v1/audit", headers=api.headers("ana@demo-corp.example")).status_code
+        api.client.get("/api/v1/audit", headers=api.headers("ana@thinknex.example")).status_code
         == 403
     )
 
@@ -209,7 +209,7 @@ def test_channel_contact_validation(api: Api) -> None:
             "channel": "SMS",
             "reason": "test",
         },
-        headers=api.headers("ana@demo-corp.example"),
+        headers=api.headers("ana@thinknex.example"),
     )
     assert r.status_code == 422
 
@@ -246,7 +246,7 @@ def test_audit_table_is_append_only(api: Api) -> None:
 
 def test_tampering_is_detected_by_hash_chain(api: Api) -> None:
     api.share()
-    headers = api.headers("carla@demo-corp.example")
+    headers = api.headers("carla@thinknex.example")
     assert api.client.get("/api/v1/audit/verify", headers=headers).json()["valid"] is True
 
     with api.components.session_factory() as db, db.begin():

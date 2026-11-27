@@ -43,7 +43,7 @@ from app.schemas import (
     ShareRequest,
 )
 from app.sensitivity.checker import SensitivityChecker, SensitivityReport
-from app.services import audit_service, notifications
+from app.services import audit_service, messages, notifications
 from app.services.context import RequestContext
 
 ShareScope = Literal["mine", "all"]
@@ -236,19 +236,21 @@ class ShareService:
         )
 
         link = f"{self.settings.public_base_url}/s/{token}"
+        message = messages.share_link(
+            recipient_name=recipient.name,
+            sender_name=user.name,
+            document_title=document.title,
+            link=link,
+            expires_at=share.expires_at,
+            max_accesses=max_accesses,
+        )
         result = notifications.send(
             self.db,
             self.channels,
             share,
             kind=NotificationKind.LINK,
-            subject=f"{user.name} compartió un documento contigo",
-            body=(
-                f"Hola {recipient.name},\n\n{user.name} compartió contigo el documento "
-                f'"{document.title}".\n\nAccede aquí: {link}\n\n'
-                f"Por seguridad te pediremos un código que enviaremos a este mismo medio. "
-                f"El enlace vence el {share.expires_at:%Y-%m-%d %H:%M} UTC y permite "
-                f"{max_accesses} descarga(s).\n"
-            ),
+            subject=message.subject,
+            body=message.body,
             actor_type=ActorType.SYSTEM,
             actor_id=None,
             ctx=ctx,

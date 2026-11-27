@@ -20,7 +20,7 @@ Compartición **segura y auditable** de documentos del sistema documental.
 * Antes de compartir se evalúa la sensibilidad (reglas + IA opcional).
 
 **Acceso:** botón `Authorize` con un usuario de la plataforma. En ambientes demo existen
-`ana@demo-corp.example` (SHARER), `carla@demo-corp.example` (AUDITOR) y el ADMIN de arranque.
+`ana@thinknex.example` (SHARER), `carla@thinknex.example` (AUDITOR) y el ADMIN de arranque.
 """
 
 

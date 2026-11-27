@@ -18,7 +18,7 @@ class SmtpEmailChannel:
 
     def send(self, message: OutboundMessage) -> DeliveryResult:
         msg = EmailMessage()
-        message_id = f"<{uuid.uuid4().hex}@demo-corp.example>"
+        message_id = f"<{uuid.uuid4().hex}@thinknex.example>"
         msg["From"] = self._sender
         msg["To"] = message.to
         msg["Subject"] = message.subject

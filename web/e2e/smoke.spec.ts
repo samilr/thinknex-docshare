@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
 const PASSWORD = process.env.DEMO_USERS_PASSWORD ?? "Demo-pass-2026";
-const ADMIN_EMAIL = process.env.BOOTSTRAP_ADMIN_EMAIL ?? "admin@demo-corp.example";
+const ADMIN_EMAIL = process.env.BOOTSTRAP_ADMIN_EMAIL ?? "admin@thinknex.example";
 const ADMIN_PASSWORD = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? "Admin-demo-2026";
 const SHOTS = process.env.SCREENSHOTS_DIR;
 
@@ -28,7 +28,7 @@ test("flujo completo: compartir, recibir, descargar y auditar", async ({ page, c
   const recipient = `auditor-${Date.now()}@auditora.example`;
 
   // 1. Ana comparte doc-003 por email
-  await login(page, "ana@demo-corp.example", PASSWORD);
+  await login(page, "ana@thinknex.example", PASSWORD);
   await shot(page, "01-dashboard-ana");
   await page.getByRole("link", { name: "Documentos" }).click();
   await shot(page, "02-documentos");
@@ -83,12 +83,12 @@ test("flujo completo: compartir, recibir, descargar y auditar", async ({ page, c
   await recipientPage.close();
 
   await page.getByRole("link", { name: "Usuarios" }).click();
-  await expect(page.getByText("carla@demo-corp.example")).toBeVisible();
+  await expect(page.getByText("carla@thinknex.example")).toBeVisible();
   await shot(page, "07-usuarios");
   await logout(page);
 
   // 3. Carla (AUDITOR) verifica la trazabilidad
-  await login(page, "carla@demo-corp.example", PASSWORD);
+  await login(page, "carla@thinknex.example", PASSWORD);
   await page.getByRole("link", { name: "Auditoría" }).click();
   await expect(page.getByText("Cadena de auditoría íntegra")).toBeVisible();
   await page.getByLabel("Documento").fill("doc-003");

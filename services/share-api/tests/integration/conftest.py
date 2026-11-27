@@ -32,7 +32,7 @@ from tests.helpers import FakeDocumentSource
 DEFAULT_URL = "postgresql+psycopg://thinknex:thinknex-local-dev@localhost:5433/share_test"
 DATABASE_URL = os.environ.get("TEST_DATABASE_URL", DEFAULT_URL)
 PASSWORD = "integration-password-1"
-ADMIN_EMAIL = "admin@demo-corp.example"
+ADMIN_EMAIL = "admin@thinknex.example"
 ADMIN_PASSWORD = "admin-password-1"
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
@@ -125,7 +125,7 @@ class Api:
         assert r.status_code == 200, r.text
         return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
-    def share(self, email: str = "ana@demo-corp.example", **overrides: object) -> dict[str, object]:
+    def share(self, email: str = "ana@thinknex.example", **overrides: object) -> dict[str, object]:
         body: dict[str, object] = {
             "document_id": "doc-public",
             "recipient": {"name": "Pedro Externo", "email": "pedro@cliente.example"},
@@ -173,7 +173,7 @@ class Api:
 
     def audit(self, **params: str) -> list[dict[str, object]]:
         r = self.client.get(
-            "/api/v1/audit", params=params, headers=self.headers("carla@demo-corp.example")
+            "/api/v1/audit", params=params, headers=self.headers("carla@thinknex.example")
         )
         assert r.status_code == 200, r.text
         items: list[dict[str, object]] = r.json()["items"]

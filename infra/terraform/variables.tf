@@ -41,7 +41,7 @@ variable "business_timezone" {
 # --- Usuarios iniciales -----------------------------------------------------------------
 variable "bootstrap_admin_email" {
   type    = string
-  default = "admin@demo-corp.example"
+  default = "admin@thinknex.example"
 }
 
 variable "demo_users_enabled" {
@@ -66,7 +66,7 @@ variable "resend_api_key" {
 
 variable "email_from" {
   type    = string
-  default = "Documentos Seguros <onboarding@resend.dev>"
+  default = "ThinkNex Docs (demo) <onboarding@resend.dev>"
 }
 
 variable "anthropic_api_key" {

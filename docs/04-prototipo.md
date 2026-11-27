@@ -40,7 +40,7 @@ make down                # o `make reset` para borrar también los datos
 | URL | Qué es |
 |---|---|
 | **http://localhost:8080** | **Portal web** (SPA + proxy a la API, mismo origen) |
-| http://localhost:8000/docs | Swagger de share-api (botón **Authorize**: `ana@demo-corp.example` / `Demo-pass-2026`) |
+| http://localhost:8000/docs | Swagger de share-api (botón **Authorize**: `ana@thinknex.example` / `Demo-pass-2026`) |
 | http://localhost:8001/docs | Swagger del DMS simulado (header `X-API-Key`, ver `.env`) |
 | http://localhost:8025 | Bandeja de Mailpit: emails con enlace y OTP |
 | http://localhost:8080/s/{token} | Página del destinatario (el enlace llega por el canal) |
@@ -49,10 +49,10 @@ make down                # o `make reset` para borrar también los datos
 
 | Usuario | Rol | Puede |
 |---|---|---|
-| `admin@demo-corp.example` | ADMIN | Usuarios y roles, todos los envíos (revocar), bandeja simulada, retención |
-| `ana@demo-corp.example` | SHARER | Compartir, listar y revocar sus shares |
-| `bruno@demo-corp.example` | SHARER | Igual que Ana (para probar que no puede revocar lo de Ana) |
-| `carla@demo-corp.example` | AUDITOR | Consultar y verificar la auditoría |
+| `admin@thinknex.example` | ADMIN | Usuarios y roles, todos los envíos (revocar), bandeja simulada, retención |
+| `ana@thinknex.example` | SHARER | Compartir, listar y revocar sus shares |
+| `bruno@thinknex.example` | SHARER | Igual que Ana (para probar que no puede revocar lo de Ana) |
+| `carla@thinknex.example` | AUDITOR | Consultar y verificar la auditoría |
 
 Contraseñas locales: ana, bruno y carla usan `DEMO_USERS_PASSWORD` (por defecto `Demo-pass-2026`);
 el ADMIN usa `BOOTSTRAP_ADMIN_PASSWORD` (por defecto `Admin-demo-2026`). En la nube las genera
@@ -83,7 +83,7 @@ Terraform (ver el README).
 
 ### Alternativa por API (Swagger)
 
-1. En http://localhost:8000/docs, **Authorize** con `ana@demo-corp.example`.
+1. En http://localhost:8000/docs, **Authorize** con `ana@thinknex.example`.
 2. `POST /api/v1/shares` con:
    ```json
    {"document_id": "doc-003", "recipient": {"name": "Pedro", "email": "pedro@auditora.example"},
@@ -91,7 +91,7 @@ Terraform (ver el README).
    ```
 3. Abrir el email en http://localhost:8025 (o la bandeja del portal), abrir el enlace, pedir el
    código, verificar y descargar.
-4. **Authorize** con `carla@demo-corp.example` y llamar `GET /api/v1/audit?document_id=doc-003`.
+4. **Authorize** con `carla@thinknex.example` y llamar `GET /api/v1/audit?document_id=doc-003`.
 
 ## 4.4 Activar la IA
 

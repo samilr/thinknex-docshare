@@ -28,7 +28,7 @@ from app.core.security import (
 )
 from app.db.models import OtpChallenge, Share
 from app.domain.enums import ActorType, AuditEventType, NotificationKind, ShareStatus
-from app.services import audit_service, notifications
+from app.services import audit_service, messages, notifications
 from app.services.context import RequestContext
 
 
@@ -162,16 +162,14 @@ class AccessService:
                 expires_at=now + ttl,
             )
         )
+        message = messages.access_code(code=code, ttl_minutes=self.settings.otp_ttl_minutes)
         notifications.send(
             self.db,
             self.channels,
             share,
             kind=NotificationKind.OTP,
-            subject="Tu código de acceso",
-            body=(
-                f"Tu código para acceder al documento es {code}. "
-                f"Vence en {self.settings.otp_ttl_minutes} minutos. No lo compartas."
-            ),
+            subject=message.subject,
+            body=message.body,
             actor_type=ActorType.SYSTEM,
             actor_id=None,
             ctx=ctx,

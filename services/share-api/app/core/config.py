@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     login_max_attempts: int = 5
     login_lockout_minutes: int = 15
     password_min_length: int = 10
-    internal_email_domains: list[str] = Field(default_factory=lambda: ["demo-corp.example"])
+    internal_email_domains: list[str] = Field(default_factory=lambda: ["thinknex.example"])
 
     # Usuarios iniciales: un ADMIN siempre; usuarios demo solo si se habilita
     bootstrap_admin_email: str | None = None
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
 
     # Canales. EMAIL_PROVIDER: smtp (Mailpit local) | resend (email real) | none (solo simulado)
     email_provider: Literal["smtp", "resend", "none"] = "smtp"
-    email_from: str = "Documentos DEMO <no-reply@demo-corp.example>"
+    email_from: str = "ThinkNex Docs (demo) <no-reply@thinknex.example>"
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     resend_api_key: SecretStr | None = None

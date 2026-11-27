@@ -13,7 +13,7 @@ export function sessionFor(roles: string[], overrides: Record<string, unknown> =
     expires_in: 900,
     user: {
       id: "00000000-0000-0000-0000-000000000001",
-      email: "ana@demo-corp.example",
+      email: "ana@thinknex.example",
       name: "Ana Rojas",
       roles,
       must_change_password: false,

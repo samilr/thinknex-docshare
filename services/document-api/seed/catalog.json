@@ -3,10 +3,10 @@
     "id": "doc-001",
     "title": "Contrato de prestación de servicios - Servicios Andinos SpA",
     "classification": "CONFIDENTIAL",
-    "owner": "legal@demo-corp.example",
+    "owner": "legal@thinknex.example",
     "version": 2,
     "paragraphs": [
-      "En Santiago, a 3 de noviembre de 2026, comparecen DEMO CORP S.A. y SERVICIOS ANDINOS SpA, RUT 76.543.210-3, representada por don Pedro Soto Muñoz, RUT 15.678.234-3.",
+      "En Santiago, a 3 de noviembre de 2026, comparecen THINKNEX S.A. (ficticia) y SERVICIOS ANDINOS SpA, RUT 76.543.210-3, representada por don Pedro Soto Muñoz, RUT 15.678.234-3.",
       "Objeto: el proveedor prestará servicios de soporte de infraestructura durante 12 meses.",
       "Precio: 450 UF mensuales, pagaderos a 30 días contra factura.",
       "Contacto del proveedor: pedro.soto@serviciosandinos.example",
@@ -17,7 +17,7 @@
     "id": "doc-002",
     "title": "Liquidación de sueldo - Octubre 2026 - Juan Pérez Rojas",
     "classification": "CONFIDENTIAL",
-    "owner": "rrhh@demo-corp.example",
+    "owner": "rrhh@thinknex.example",
     "version": 1,
     "paragraphs": [
       "Trabajador: Juan Pérez Rojas, RUT 17.234.567-0.",
@@ -32,7 +32,7 @@
     "id": "doc-003",
     "title": "Informe trimestral de operaciones Q3 2026",
     "classification": "INTERNAL",
-    "owner": "operaciones@demo-corp.example",
+    "owner": "operaciones@thinknex.example",
     "version": 3,
     "paragraphs": [
       "Resumen: el tiempo medio de resolución de incidentes bajó un 18% respecto al trimestre anterior.",
@@ -45,7 +45,7 @@
     "id": "doc-004",
     "title": "Catálogo de productos 2026",
     "classification": "PUBLIC",
-    "owner": "marketing@demo-corp.example",
+    "owner": "marketing@thinknex.example",
     "version": 1,
     "paragraphs": [
       "Plan Básico: soporte en horario hábil y reportes mensuales.",
@@ -58,7 +58,7 @@
     "id": "doc-005",
     "title": "Plan estratégico 2027 - Uso exclusivo del Directorio",
     "classification": "RESTRICTED",
-    "owner": "gerencia@demo-corp.example",
+    "owner": "gerencia@thinknex.example",
     "version": 1,
     "paragraphs": [
       "Objetivo 1: expansión a dos nuevos mercados de la región.",
@@ -71,7 +71,7 @@
     "id": "doc-006",
     "title": "Certificado de cliente - María González Fuentes",
     "classification": "INTERNAL",
-    "owner": "comercial@demo-corp.example",
+    "owner": "comercial@thinknex.example",
     "version": 1,
     "paragraphs": [
       "Se certifica que doña María González Fuentes, RUT 18.456.789-K, es cliente vigente desde 2021.",

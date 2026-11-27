@@ -17,7 +17,7 @@ def render_pdf(entry: SeedEntry) -> bytes:
     buffer = io.BytesIO()
     # invariant=1 hace la salida determinista: mismo contenido => mismo sha256 entre reinicios.
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, title=entry.title, author="DEMO CORP (ficticio)", invariant=1
+        buffer, pagesize=A4, title=entry.title, author="ThinkNex (ficticio)", invariant=1
     )
     styles = getSampleStyleSheet()
     story = [
