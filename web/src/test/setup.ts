@@ -24,6 +24,8 @@ class ResizeObserverMock {
 }
 window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 window.HTMLElement.prototype.scrollIntoView = () => {};
+URL.createObjectURL = () => "blob:mock";
+URL.revokeObjectURL = () => {};
 Object.defineProperty(document, "fonts", {
   value: { addEventListener: () => {}, removeEventListener: () => {}, ready: Promise.resolve() },
 });

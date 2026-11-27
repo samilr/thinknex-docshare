@@ -234,6 +234,171 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/library/libraries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Libraries */
+    get: operations["libraries_api_v1_library_libraries_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Items
+     * @description Contenido de una ubicación: migas de pan, carpetas y archivos (con accesos activos).
+     */
+    get: operations["items_api_v1_library_items_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/folders": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Folder */
+    post: operations["create_folder_api_v1_library_folders_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload
+     * @description Sube un archivo. Devuelve los datos personales detectados para advertir en la interfaz.
+     */
+    post: operations["upload_api_v1_library_documents_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents/{doc_id}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Upload Version */
+    post: operations["upload_version_api_v1_library_documents__doc_id__versions_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents/{doc_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Detail */
+    get: operations["detail_api_v1_library_documents__doc_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents/{doc_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Content
+     * @description Vista o descarga interna: PDF con marca de agua del usuario y evento DOCUMENT_VIEWED.
+     */
+    get: operations["content_api_v1_library_documents__doc_id__content_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents/{doc_id}/access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Access
+     * @description Personas con acceso: envíos del archivo (vigentes primero).
+     */
+    get: operations["access_api_v1_library_documents__doc_id__access_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/library/documents/{doc_id}/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Activity */
+    get: operations["activity_api_v1_library_documents__doc_id__activity_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/shares/precheck": {
     parameters: {
       query?: never;
@@ -549,7 +714,11 @@ export interface components {
       | "USER_ENABLED"
       | "PASSWORD_CHANGED"
       | "PASSWORD_RESET"
-      | "TOKEN_REUSE_DETECTED";
+      | "TOKEN_REUSE_DETECTED"
+      | "DOCUMENT_UPLOADED"
+      | "DOCUMENT_VERSION_UPLOADED"
+      | "DOCUMENT_VIEWED"
+      | "FOLDER_CREATED";
     /** AuditPage */
     AuditPage: {
       /** Items */
@@ -584,6 +753,28 @@ export interface components {
        * Format: password
        */
       client_secret?: string | null;
+    };
+    /** Body_upload_api_v1_library_documents_post */
+    Body_upload_api_v1_library_documents_post: {
+      /** File */
+      file: string;
+      /** Library Id */
+      library_id: string;
+      classification: components["schemas"]["Classification"];
+      /** Folder Id */
+      folder_id?: string | null;
+      /** Title */
+      title?: string | null;
+    };
+    /** Body_upload_version_api_v1_library_documents__doc_id__versions_post */
+    Body_upload_version_api_v1_library_documents__doc_id__versions_post: {
+      /** File */
+      file: string;
+      /**
+       * Comment
+       * @default
+       */
+      comment: string;
     };
     /** ChainVerificationOut */
     ChainVerificationOut: {
@@ -628,6 +819,15 @@ export interface components {
      * @enum {string}
      */
     Decision: "ALLOW" | "WARN" | "BLOCK";
+    /** DocumentDetail */
+    DocumentDetail: {
+      document: components["schemas"]["LibraryDocument"];
+      /** Versions */
+      versions: components["schemas"]["SourceVersion"][];
+      library: components["schemas"]["SourceLibrary"] | null;
+      /** Breadcrumbs */
+      breadcrumbs: components["schemas"]["SourceFolder"][];
+    };
     /** DocumentOut */
     DocumentOut: {
       /** Source Id */
@@ -662,6 +862,15 @@ export interface components {
       count: number;
       /** Samples */
       samples: string[];
+    };
+    /** FolderCreate */
+    FolderCreate: {
+      /** Library Id */
+      library_id: string;
+      /** Parent Id */
+      parent_id?: string | null;
+      /** Name */
+      name: string;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -701,6 +910,58 @@ export interface components {
       items: components["schemas"]["InboxMessageOut"][];
       /** Total */
       total: number;
+    };
+    /** LibraryDocument */
+    LibraryDocument: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Mime Type */
+      mime_type: string;
+      /** Size Bytes */
+      size_bytes: number;
+      /** Sha256 */
+      sha256: string;
+      /** Version */
+      version: number;
+      classification: components["schemas"]["Classification"];
+      /** Owner */
+      owner: string;
+      /**
+       * Filename
+       * @default
+       */
+      filename: string;
+      /**
+       * Library Id
+       * @default
+       */
+      library_id: string;
+      /** Folder Id */
+      folder_id?: string | null;
+      /**
+       * Created By
+       * @default
+       */
+      created_by: string;
+      /** Updated At */
+      updated_at?: string | null;
+      /**
+       * Active Shares
+       * @default 0
+       */
+      active_shares: number;
+    };
+    /** LibraryItems */
+    LibraryItems: {
+      library: components["schemas"]["SourceLibrary"];
+      /** Breadcrumbs */
+      breadcrumbs: components["schemas"]["SourceFolder"][];
+      /** Folders */
+      folders: components["schemas"]["SourceFolder"][];
+      /** Documents */
+      documents: components["schemas"]["LibraryDocument"][];
     };
     /** LlmAssessment */
     LlmAssessment: {
@@ -934,6 +1195,54 @@ export interface components {
       classification: components["schemas"]["Classification"];
       /** Owner */
       owner: string;
+      /**
+       * Filename
+       * @default
+       */
+      filename: string;
+      /**
+       * Library Id
+       * @default
+       */
+      library_id: string;
+      /** Folder Id */
+      folder_id?: string | null;
+      /**
+       * Created By
+       * @default
+       */
+      created_by: string;
+      /** Updated At */
+      updated_at?: string | null;
+    };
+    /** SourceFolder */
+    SourceFolder: {
+      /** Id */
+      id: string;
+      /** Library Id */
+      library_id: string;
+      /** Parent Id */
+      parent_id: string | null;
+      /** Name */
+      name: string;
+      /** Created By */
+      created_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** SourceLibrary */
+    SourceLibrary: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+      /** Document Count */
+      document_count: number;
     };
     /** SourcePage */
     SourcePage: {
@@ -945,6 +1254,24 @@ export interface components {
       limit: number;
       /** Offset */
       offset: number;
+    };
+    /** SourceVersion */
+    SourceVersion: {
+      /** Version */
+      version: number;
+      /** Sha256 */
+      sha256: string;
+      /** Size Bytes */
+      size_bytes: number;
+      /** Comment */
+      comment: string;
+      /** Created By */
+      created_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /** Stats */
     Stats: {
@@ -990,6 +1317,14 @@ export interface components {
       title: string;
       /** Shares */
       shares: number;
+    };
+    /** UploadResult */
+    UploadResult: {
+      document: components["schemas"]["LibraryDocument"];
+      /** Findings */
+      findings: components["schemas"]["FindingSummary"][];
+      /** New Version */
+      new_version: boolean;
     };
     /** UserCreate */
     UserCreate: {
@@ -1445,6 +1780,292 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SourcePage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  libraries_api_v1_library_libraries_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SourceLibrary"][];
+        };
+      };
+    };
+  };
+  items_api_v1_library_items_get: {
+    parameters: {
+      query: {
+        library_id: string;
+        folder_id?: string | null;
+        q?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LibraryItems"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_folder_api_v1_library_folders_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SourceFolder"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_api_v1_library_documents_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_api_v1_library_documents_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadResult"];
+        };
+      };
+      /** @description name_conflict: ya existe; subir como nueva versión */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_version_api_v1_library_documents__doc_id__versions_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_version_api_v1_library_documents__doc_id__versions_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  detail_api_v1_library_documents__doc_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DocumentDetail"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  content_api_v1_library_documents__doc_id__content_get: {
+    parameters: {
+      query?: {
+        version?: number | null;
+        disposition?: "inline" | "attachment";
+      };
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  access_api_v1_library_documents__doc_id__access_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  activity_api_v1_library_documents__doc_id__activity_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AuditEventOut"][];
         };
       };
       /** @description Validation Error */

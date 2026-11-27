@@ -1,10 +1,14 @@
 """Marca de agua generada al vuelo en cada descarga (nunca se almacena)."""
 
 import io
+import logging
 
 from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PyPdfError
 from reportlab.lib.colors import Color
 from reportlab.pdfgen import canvas
+
+logger = logging.getLogger(__name__)
 
 
 def _overlay(width: float, height: float, text: str) -> PdfReader:
@@ -38,5 +42,11 @@ def watermark_pdf(content: bytes, text: str) -> bytes:
 def apply_watermark(content: bytes, mime_type: str, text: str) -> tuple[bytes, bool]:
     """Devuelve (contenido, se_aplicó). Formatos no PDF se entregan sin marca (limitación)."""
     if mime_type == "application/pdf":
-        return watermark_pdf(content, text), True
+        try:
+            return watermark_pdf(content, text), True
+        except (PyPdfError, ValueError, KeyError) as exc:  # PDF malformado: se entrega sin marca
+            logger.warning(
+                "no se pudo aplicar marca de agua", extra={"extra_fields": {"error": str(exc)}}
+            )
+            return content, False
     return content, False

@@ -70,6 +70,10 @@ export const EVENT: Record<string, string> = {
   PASSWORD_CHANGED: "Contraseña cambiada",
   PASSWORD_RESET: "Contraseña reiniciada",
   TOKEN_REUSE_DETECTED: "Reutilización de sesión detectada",
+  DOCUMENT_UPLOADED: "Archivo subido",
+  DOCUMENT_VERSION_UPLOADED: "Nueva versión subida",
+  DOCUMENT_VIEWED: "Archivo abierto internamente",
+  FOLDER_CREATED: "Carpeta creada",
 };
 
 export const EVENT_COLOR: Record<string, string> = {
@@ -82,6 +86,9 @@ export const EVENT_COLOR: Record<string, string> = {
   SHARE_REVOKED: "gray",
   DOCUMENT_ACCESSED: "green",
   SHARE_CREATED: "blue",
+  DOCUMENT_UPLOADED: "teal",
+  DOCUMENT_VERSION_UPLOADED: "teal",
+  DOCUMENT_VIEWED: "gray",
 };
 
 export const labelOf = (map: Record<string, Label>, key: string): Label =>

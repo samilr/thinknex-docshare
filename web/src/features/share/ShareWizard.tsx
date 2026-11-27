@@ -215,6 +215,7 @@ export function ShareWizard({
 
   return (
     <Modal
+      zIndex={400} // por encima del panel lateral del explorador
       opened={opened}
       onClose={close}
       size="lg"

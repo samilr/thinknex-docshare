@@ -10,7 +10,7 @@ server {
     server_name _;
     server_tokens off;
     root /usr/share/nginx/html;
-    client_max_body_size 1m;
+    client_max_body_size 25m;
 
     resolver ${DNS_RESOLVER} valid=30s ipv6=off;
     set $share_api ${SHARE_API_URL};

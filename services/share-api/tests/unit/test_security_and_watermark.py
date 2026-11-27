@@ -59,6 +59,8 @@ def test_watermark_is_applied_and_content_preserved() -> None:
     assert "Contenido original" in text and "Compartido con Ana" in text
     same, applied = apply_watermark(b"zip", "application/zip", "x")
     assert (same, applied) == (b"zip", False)
+    broken = b"%PDF-1.4 truncado"
+    assert apply_watermark(broken, "application/pdf", "x") == (broken, False)
 
 
 def test_audit_hash_changes_with_any_field() -> None:

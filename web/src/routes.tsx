@@ -12,8 +12,8 @@ const ChangePasswordPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const DocumentsPage = lazy(() =>
-  import("./pages/DocumentsPage").then((m) => ({ default: m.DocumentsPage })),
+const ExplorerPage = lazy(() =>
+  import("./features/library/ExplorerPage").then((m) => ({ default: m.ExplorerPage })),
 );
 const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
 const SharesPage = lazy(() =>
@@ -33,10 +33,10 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <DashboardPage /> },
       {
-        path: "documentos",
+        path: "documentos/:libraryId?/:folderId?",
         element: (
           <RequireRoles roles={["SHARER"]}>
-            <DocumentsPage />
+            <ExplorerPage />
           </RequireRoles>
         ),
       },

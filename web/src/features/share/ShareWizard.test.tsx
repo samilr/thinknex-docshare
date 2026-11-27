@@ -17,6 +17,10 @@ const document = {
   version: 1,
   classification: "INTERNAL" as const,
   owner: "comercial@thinknex.example",
+  filename: "certificado.pdf",
+  library_id: "comercial",
+  folder_id: null,
+  created_by: "comercial@thinknex.example",
 };
 
 const warnReport = {
