@@ -9,7 +9,7 @@ from sqlalchemy.exc import DBAPIError
 from app.adapters.storage import snapshot_key
 from app.db.models import Share
 from app.services import retention_service
-from tests.integration.conftest import Api
+from tests.integration.conftest import ACCESS, Api
 
 pytestmark = pytest.mark.integration
 
@@ -20,16 +20,27 @@ def test_end_to_end_email_share(api: Api) -> None:
     assert share["notification_status"] == "SENT"
     assert "/s/" not in str(share), "el enlace nunca se devuelve a quien comparte"
 
+    assert share["permission"] == "DOWNLOAD" and share["audience"] == "SPECIFIC"
+    assert share["link"] is None, "por email el enlace solo viaja al destinatario"
+
     token = api.last_link_token()
-    landing = api.client.get(f"/s/{token}")
+    landing = api.client.get(f"{ACCESS}/{token}")
     assert landing.status_code == 200
-    assert "Ana Rojas" in landing.text
-    assert "Documento doc-public" not in landing.text, "no se revela el título antes del OTP"
-    assert "nonce-" in landing.headers["content-security-policy"]
+    info = landing.json()
+    assert info["shared_by"] == "Ana Rojas"
+    assert info["requires_code"] is True
+    assert info["document_title"] is None, "no se revela el título antes del código"
+    assert info["destination"].startswith("p***@")
     assert landing.headers["cache-control"] == "no-store"
+    assert landing.headers["referrer-policy"] == "no-referrer"
 
     access = api.unlock(token)
-    download = api.client.get(f"/s/{token}/download", headers={"Authorization": f"Bearer {access}"})
+    auth = {"Authorization": f"Bearer {access}"}
+    view = api.client.get(f"{ACCESS}/{token}/document", headers=auth)
+    assert view.status_code == 200, view.text
+    assert view.json()["can_download"] is True and view.json()["can_edit"] is False
+    assert view.json()["live"] is False
+    download = api.client.get(f"{ACCESS}/{token}/download", headers=auth)
     assert download.status_code == 200
     assert download.headers["content-type"] == "application/pdf"
     pdf_text = PdfReader(io.BytesIO(download.content)).pages[0].extract_text()
@@ -43,6 +54,7 @@ def test_end_to_end_email_share(api: Api) -> None:
         "LINK_OPENED",
         "OTP_SENT",
         "OTP_VERIFIED",
+        "DOCUMENT_VIEWED",
         "DOCUMENT_ACCESSED",
     ]
     created = events[-1]
@@ -109,29 +121,36 @@ def test_restricted_to_internal_warns(api: Api) -> None:
 def test_wrong_otp_locks_share(api: Api) -> None:
     share = api.share()
     token = api.last_link_token()
-    api.client.post(f"/s/{token}/otp")
+    api.client.post(f"{ACCESS}/{token}/otp")
     good = api.last_otp()
     wrong = "000000" if good != "000000" else "111111"
     for attempt in range(1, 5):
-        r = api.client.post(f"/s/{token}/verify", json={"code": wrong})
+        r = api.client.post(f"{ACCESS}/{token}/verify", json={"code": wrong})
         assert r.status_code == 401
         assert r.json()["remaining_attempts"] == 5 - attempt
-    r = api.client.post(f"/s/{token}/verify", json={"code": wrong})
+    r = api.client.post(f"{ACCESS}/{token}/verify", json={"code": wrong})
     assert r.status_code == 404
-    assert api.client.post(f"/s/{token}/verify", json={"code": good}).status_code == 404
+    assert api.client.post(f"{ACCESS}/{token}/verify", json={"code": good}).status_code == 404
     detail = api.client.get(
         f"/api/v1/shares/{share['id']}", headers=api.headers("ana@thinknex.example")
     )
     assert detail.json()["status"] == "LOCKED"
 
 
-def test_max_accesses_is_enforced(api: Api) -> None:
-    api.share(max_accesses=1)
+def test_max_accesses_counts_sessions(api: Api) -> None:
+    share = api.share(max_accesses=1)
     token = api.last_link_token()
     access = api.unlock(token)
     auth = {"Authorization": f"Bearer {access}"}
-    assert api.client.get(f"/s/{token}/download", headers=auth).status_code == 200
-    assert api.client.get(f"/s/{token}/download", headers=auth).status_code == 404
+    # La sesión ya iniciada sigue sirviendo aunque se haya agotado el máximo de accesos.
+    assert api.client.get(f"{ACCESS}/{token}/download", headers=auth).status_code == 200
+    assert api.client.get(f"{ACCESS}/{token}/download", headers=auth).status_code == 200
+    detail = api.client.get(
+        f"/api/v1/shares/{share['id']}", headers=api.headers("ana@thinknex.example")
+    )
+    assert detail.json()["status"] == "EXHAUSTED"
+    # Pero no se puede iniciar otra sesión.
+    assert api.client.post(f"{ACCESS}/{token}/otp").status_code == 404
     denied = api.audit(event_type="ACCESS_DENIED")
     assert denied[0]["metadata"]["reason"] == "EXHAUSTED"  # type: ignore[index]
 
@@ -139,13 +158,15 @@ def test_max_accesses_is_enforced(api: Api) -> None:
 def test_download_requires_verified_otp(api: Api) -> None:
     api.share()
     token = api.last_link_token()
-    assert api.client.get(f"/s/{token}/download").status_code == 404
+    assert api.client.get(f"{ACCESS}/{token}/download").status_code == 404
     other_token = api.client.post(
         "/api/v1/auth/token",
         data={"username": "ana@thinknex.example", "password": "integration-password-1"},
     ).json()["access_token"]
-    r = api.client.get(f"/s/{token}/download", headers={"Authorization": f"Bearer {other_token}"})
-    assert r.status_code == 404, "un JWT de usuario interno no sirve como token de descarga"
+    r = api.client.get(
+        f"{ACCESS}/{token}/download", headers={"Authorization": f"Bearer {other_token}"}
+    )
+    assert r.status_code == 404, "un JWT de usuario interno no sirve como sesión de acceso"
 
 
 def test_revocation(api: Api) -> None:
@@ -156,9 +177,11 @@ def test_revocation(api: Api) -> None:
     r = api.client.post(url, headers=api.headers("ana@thinknex.example"))
     assert r.status_code == 200 and r.json()["status"] == "REVOKED"
     assert api.client.post(url, headers=api.headers("ana@thinknex.example")).status_code == 409
-    landing = api.client.get(f"/s/{token}")
-    assert landing.status_code == 404 and "Enlace no disponible" in landing.text
-    assert api.client.post(f"/s/{token}/otp").status_code == 404
+    landing = api.client.get(f"{ACCESS}/{token}")
+    assert landing.status_code == 404
+    assert landing.headers["content-type"] == "application/problem+json"
+    assert token not in landing.text, "el token no se refleja en la respuesta de error"
+    assert api.client.post(f"{ACCESS}/{token}/otp").status_code == 404
 
 
 def test_expired_share(api: Api) -> None:
@@ -170,13 +193,13 @@ def test_expired_share(api: Api) -> None:
             .where(Share.id == share["id"])
             .values(expires_at=datetime.now(UTC) - timedelta(minutes=1))
         )
-    assert api.client.post(f"/s/{token}/otp").status_code == 404
+    assert api.client.post(f"{ACCESS}/{token}/otp").status_code == 404
     events = [e["event_type"] for e in api.audit(share_id=str(share["id"]))]
     assert events[:2] == ["ACCESS_DENIED", "SHARE_EXPIRED"]
 
 
 def test_unknown_link_is_audited(api: Api) -> None:
-    assert api.client.post("/s/not-a-real-token/otp").status_code == 404
+    assert api.client.post(f"{ACCESS}/not-a-real-token/otp").status_code == 404
     denied = api.audit(event_type="ACCESS_DENIED")
     assert denied[0]["metadata"]["reason"] == "UNKNOWN_TOKEN"  # type: ignore[index]
 

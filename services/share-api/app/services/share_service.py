@@ -26,10 +26,13 @@ from app.core.security import generate_share_token, hash_token, mask_email, mask
 from app.db.models import AuditEvent, Document, Recipient, Share, User
 from app.domain.enums import (
     ActorType,
+    Audience,
     AuditEventType,
     Channel,
+    Classification,
     Decision,
     NotificationKind,
+    Permission,
     Role,
     ShareStatus,
 )
@@ -135,9 +138,18 @@ class ShareService:
         return recipient
 
     # ---------------------------------------------------------------- casos de uso
-    def precheck(self, user: User, document_id: str, recipient: RecipientIn) -> PrecheckResponse:
+    def precheck(
+        self,
+        user: User,
+        document_id: str,
+        recipient: RecipientIn | None,
+        audience: Audience = Audience.SPECIFIC,
+    ) -> PrecheckResponse:
         meta, content = self._fetch_verified(document_id)
-        report = self._analyze(meta, content, self._is_external(recipient))
+        is_external = audience is Audience.ANYONE or (
+            recipient is not None and self._is_external(recipient)
+        )
+        report = apply_link_policy(self._analyze(meta, content, is_external), audience, None)
         return PrecheckResponse(document=meta, report=report)
 
     def create(self, user: User, req: ShareRequest, ctx: RequestContext) -> ShareOut:
@@ -152,9 +164,13 @@ class ShareService:
                 f"max_accesses no puede superar {self.settings.max_accesses_limit}"
             )
 
-        is_external = self._is_external(req.recipient)
+        is_external = req.audience is Audience.ANYONE or (
+            req.recipient is not None and self._is_external(req.recipient)
+        )
         meta, content = self._fetch_verified(req.document_id)
-        report = self._analyze(meta, content, is_external)
+        report = apply_link_policy(
+            self._analyze(meta, content, is_external), req.audience, req.permission
+        )
         audit_service.record(
             self.db,
             event_type=AuditEventType.SENSITIVITY_CHECKED,
@@ -191,14 +207,16 @@ class ShareService:
             )
 
         document = self._upsert_document(meta, content)
-        recipient = self._upsert_recipient(req.recipient, is_external)
+        recipient = self._upsert_recipient(req.recipient, is_external) if req.recipient else None
         token = generate_share_token()
         share = Share(
             id=uuid.uuid4(),
             document_id=document.id,
             shared_by=user.id,
-            recipient_id=recipient.id,
+            recipient_id=recipient.id if recipient else None,
             channel=req.channel.value,
+            permission=req.permission.value,
+            audience=req.audience.value,
             reason=req.reason,
             token_hash=hash_token(token),
             status=ShareStatus.ACTIVE.value,
@@ -225,8 +243,10 @@ class ShareService:
                 "source_document_id": meta.id,
                 "source_version": meta.version,
                 "sha256": meta.sha256,
-                "recipient_id": str(recipient.id),
+                "recipient_id": str(recipient.id) if recipient else None,
                 "recipient_external": is_external,
+                "audience": req.audience.value,
+                "permission": req.permission.value,
                 "reason": req.reason,
                 "expires_at": share.expires_at.isoformat(),
                 "max_accesses": max_accesses,
@@ -236,6 +256,10 @@ class ShareService:
         )
 
         link = f"{self.settings.public_base_url}/s/{token}"
+        if req.channel is Channel.LINK:
+            # El emisor copia el enlace y lo envía por el medio que prefiera: se muestra una vez.
+            return to_share_out(share, link=link)
+        assert recipient is not None  # garantizado por ShareRequest  # noqa: S101
         message = messages.share_link(
             recipient_name=recipient.name,
             sender_name=user.name,
@@ -243,6 +267,7 @@ class ShareService:
             link=link,
             expires_at=share.expires_at,
             max_accesses=max_accesses,
+            permission=req.permission,
         )
         result = notifications.send(
             self.db,
@@ -257,6 +282,29 @@ class ShareService:
             settings=self.settings,
         )
         return to_share_out(share, notification_status="SENT" if result.ok else "FAILED")
+
+    def rotate_link(self, user: User, share_id: uuid.UUID, ctx: RequestContext) -> ShareOut:
+        """Genera un enlace nuevo para un envío LINK; el anterior deja de funcionar."""
+        share = self._visible(user, share_id)
+        if share.shared_by != user.id and not user.has_any(Role.ADMIN):
+            raise ForbiddenError("Solo quien compartió o un ADMIN puede generar un enlace nuevo")
+        if Channel(share.channel) is not Channel.LINK:
+            raise ConflictError("Solo los enlaces de ThinkNex Docs se pueden regenerar")
+        if share.status != ShareStatus.ACTIVE.value or share.expires_at <= datetime.now(UTC):
+            raise ConflictError("El envío no está activo")
+        token = generate_share_token()
+        share.token_hash = hash_token(token)
+        audit_service.record(
+            self.db,
+            event_type=AuditEventType.SHARE_LINK_ROTATED,
+            actor_type=ActorType.USER,
+            actor_id=user.id,
+            share_id=share.id,
+            document_id=share.document_id,
+            channel=share.channel,
+            ctx=ctx,
+        )
+        return to_share_out(share, link=f"{self.settings.public_base_url}/s/{token}")
 
     def search(
         self,
@@ -344,20 +392,53 @@ class ShareService:
         return to_share_out(share)
 
 
-def to_share_out(share: Share, notification_status: str | None = None) -> ShareOut:
+def apply_link_policy(
+    report: SensitivityReport, audience: Audience, permission: Permission | None
+) -> SensitivityReport:
+    """Reglas propias de los enlaces y permisos, sobre la evaluación de sensibilidad.
+
+    - "Cualquiera con el enlace" solo si el documento sería ALLOW hacia un externo.
+    - Los documentos RESTRINGIDOS no admiten edición por destinatarios.
+    """
+    reasons: list[str] = []
+    if audience is Audience.ANYONE and report.decision is not Decision.ALLOW:
+        reasons.append(
+            "Un enlace para cualquier persona solo se permite con documentos públicos o internos "
+            "sin datos personales. Use 'Persona específica'."
+        )
+    if permission is Permission.EDIT and report.classification is Classification.RESTRICTED:
+        reasons.append("Los documentos RESTRINGIDOS no admiten edición por destinatarios.")
+    if not reasons:
+        return report
+    return report.model_copy(
+        update={"decision": Decision.BLOCK, "reasons": [*report.reasons, *reasons]}
+    )
+
+
+def to_share_out(
+    share: Share, notification_status: str | None = None, link: str | None = None
+) -> ShareOut:
     recipient = share.recipient
-    contact = mask_email(recipient.email) if recipient.email else mask_phone(recipient.phone or "")
+    recipient_out = None
+    if recipient is not None:
+        contact = (
+            mask_email(recipient.email) if recipient.email else mask_phone(recipient.phone or "")
+        )
+        recipient_out = RecipientOut(
+            name=recipient.name, contact=contact, is_external=recipient.is_external
+        )
     status = ShareStatus(share.status)
     if status is ShareStatus.ACTIVE and share.expires_at <= datetime.now(UTC):
         status = ShareStatus.EXPIRED  # vencimiento perezoso: el estado efectivo se calcula al leer
     return ShareOut(
         id=share.id,
         document=DocumentOut.model_validate(share.document),
-        recipient=RecipientOut(
-            name=recipient.name, contact=contact, is_external=recipient.is_external
-        ),
+        recipient=recipient_out,
         shared_by=share.sharer.email,
         channel=Channel(share.channel),
+        audience=Audience(share.audience),
+        permission=Permission(share.permission),
+        link=link,
         reason=share.reason,
         status=status,
         created_at=share.created_at,

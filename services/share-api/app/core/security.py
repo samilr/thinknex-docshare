@@ -13,7 +13,7 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 
 ALGORITHM = "HS256"
 USER_TOKEN = "user"  # noqa: S105 - tipo de token, no un secreto
-DOWNLOAD_TOKEN = "download"  # noqa: S105
+ACCESS_TOKEN = "access"  # noqa: S105 - tipo de token (sesión del destinatario)
 
 
 class InvalidTokenError(Exception):
@@ -77,14 +77,15 @@ def decode_user_token(token: str, secret: str) -> dict[str, Any]:
     return _decode(token, secret, USER_TOKEN)
 
 
-def create_download_token(share_id: uuid.UUID, secret: str, ttl_minutes: int) -> str:
+def create_access_token(share_id: uuid.UUID, secret: str, ttl_minutes: int) -> str:
+    """Sesión del destinatario en el visor, ligada a un envío."""
     return _encode(
-        {"sub": str(share_id), "typ": DOWNLOAD_TOKEN}, secret, timedelta(minutes=ttl_minutes)
+        {"sub": str(share_id), "typ": ACCESS_TOKEN}, secret, timedelta(minutes=ttl_minutes)
     )
 
 
-def decode_download_token(token: str, secret: str) -> dict[str, Any]:
-    return _decode(token, secret, DOWNLOAD_TOKEN)
+def decode_access_token(token: str, secret: str) -> dict[str, Any]:
+    return _decode(token, secret, ACCESS_TOKEN)
 
 
 def generate_share_token() -> str:

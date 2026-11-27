@@ -18,9 +18,26 @@ from app.services import audit_service
 from app.services.context import RequestContext
 
 
+def delivery_channel(share: Share) -> Channel:
+    """Canal por el que se entregan mensajes al destinatario.
+
+    En un enlace de ThinkNex Docs (LINK) para persona específica, el código de verificación va
+    por email si se conoce y, si no, por SMS.
+    """
+    channel = Channel(share.channel)
+    if channel is not Channel.LINK:
+        return channel
+    if share.recipient is None:
+        raise ValidationFailedError("Un enlace para cualquier persona no tiene destinatario")
+    return Channel.EMAIL if share.recipient.email else Channel.SMS
+
+
 def destination(share: Share) -> str:
     recipient = share.recipient
-    to = recipient.email if Channel(share.channel) is Channel.EMAIL else recipient.phone
+    if recipient is None:
+        raise ValidationFailedError("Este envío no tiene destinatario")
+    channel = delivery_channel(share)
+    to = recipient.email if channel is Channel.EMAIL else recipient.phone
     if not to:  # la validación de entrada lo impide; defensa en profundidad
         raise ValidationFailedError("El destinatario no tiene contacto para el canal elegido")
     return to
@@ -28,7 +45,7 @@ def destination(share: Share) -> str:
 
 def masked_destination(share: Share) -> str:
     to = destination(share)
-    return mask_email(to) if Channel(share.channel) is Channel.EMAIL else mask_phone(to)
+    return mask_email(to) if delivery_channel(share) is Channel.EMAIL else mask_phone(to)
 
 
 def send(
@@ -44,7 +61,7 @@ def send(
     ctx: RequestContext | None,
     settings: Settings,
 ) -> DeliveryResult:
-    channel = Channel(share.channel)
+    channel = delivery_channel(share)
     to = destination(share)
     result = channels.get(channel).send(
         OutboundMessage(channel=channel, to=to, subject=subject, body=body, kind=kind)

@@ -128,7 +128,7 @@ def get_share_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> Sha
 
 
 def get_access_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> AccessService:
-    return AccessService(db, settings, c.storage, c.channels)
+    return AccessService(db, settings, c.storage, c.channels, c.source)
 
 
 def get_library_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> LibraryService:

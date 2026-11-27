@@ -21,7 +21,7 @@ def test_user_token_roundtrip_and_type_confusion() -> None:
     assert security.decode_user_token(token, SECRET)["sub"] == str(uid)
     with pytest.raises(security.InvalidTokenError):
         security.decode_user_token(token, "x" * 32)
-    download = security.create_download_token(uid, SECRET, 5)
+    download = security.create_access_token(uid, SECRET, 5)
     with pytest.raises(security.InvalidTokenError):  # un token de descarga no sirve como sesión
         security.decode_user_token(download, SECRET)
 
@@ -48,6 +48,7 @@ def test_masking() -> None:
 
 def test_link_tokens_are_redacted_from_logs() -> None:
     assert redact_path("/s/abcDEF123/download") == "/s/***/download"
+    assert redact_path("/api/v1/access/abcDEF123/pages/1") == "/api/v1/access/***/pages/1"
     assert redact_path("/api/v1/shares") == "/api/v1/shares"
 
 

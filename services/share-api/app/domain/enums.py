@@ -8,9 +8,21 @@ class Role(StrEnum):
 
 
 class Channel(StrEnum):
+    LINK = "LINK"  # enlace de ThinkNex Docs: el emisor lo copia y lo envía por donde prefiera
     EMAIL = "EMAIL"
     WHATSAPP = "WHATSAPP"
     SMS = "SMS"
+
+
+class Permission(StrEnum):
+    VIEW = "VIEW"  # lectura protegida en el visor, sin descarga
+    DOWNLOAD = "DOWNLOAD"  # ver y descargar
+    EDIT = "EDIT"  # ver, descargar y publicar nuevas versiones (archivo vivo)
+
+
+class Audience(StrEnum):
+    SPECIFIC = "SPECIFIC"  # persona específica, verificada con código
+    ANYONE = "ANYONE"  # cualquiera con el enlace
 
 
 class Classification(StrEnum):
@@ -81,3 +93,5 @@ class AuditEventType(StrEnum):
     DOCUMENT_VERSION_UPLOADED = "DOCUMENT_VERSION_UPLOADED"
     DOCUMENT_VIEWED = "DOCUMENT_VIEWED"
     FOLDER_CREATED = "FOLDER_CREATED"
+    ACCESS_GRANTED = "ACCESS_GRANTED"
+    SHARE_LINK_ROTATED = "SHARE_LINK_ROTATED"

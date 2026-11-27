@@ -13,13 +13,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
-_SHARE_PATH = re.compile(r"^/s/[^/]+")
+_SHARE_PATH = re.compile(r"^(/s|/api/v1/access)/[^/]+")
 logger = logging.getLogger("share_api.http")
 
 
 def redact_path(path: str) -> str:
-    """Los enlaces /s/{token} son credenciales: nunca deben terminar en logs."""
-    return _SHARE_PATH.sub("/s/***", path)
+    """Los tokens de enlace (/s/… y /api/v1/access/…) son credenciales: nunca van a los logs."""
+    return _SHARE_PATH.sub(r"\1/***", path)
 
 
 class JsonFormatter(logging.Formatter):
@@ -60,7 +60,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         finally:
             request_id_var.reset(token)
         response.headers["X-Request-ID"] = request_id
-        if request.url.path.startswith("/s/"):
+        if request.url.path.startswith(("/s/", "/api/v1/access/")):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Referrer-Policy"] = "no-referrer"
             response.headers["X-Content-Type-Options"] = "nosniff"

@@ -34,6 +34,7 @@ DATABASE_URL = os.environ.get("TEST_DATABASE_URL", DEFAULT_URL)
 PASSWORD = "integration-password-1"
 ADMIN_EMAIL = "admin@thinknex.example"
 ADMIN_PASSWORD = "admin-password-1"
+ACCESS = "/api/v1/access"
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -90,6 +91,8 @@ def source() -> FakeDocumentSource:
     src.add("doc-confidential", Classification.CONFIDENTIAL, "Contrato de servicios")
     src.add("doc-restricted", Classification.RESTRICTED, "Plan estrategico del directorio")
     src.add("doc-retention", Classification.PUBLIC, "Documento para probar retencion")
+    src.add("doc-edit", Classification.INTERNAL, "Borrador de propuesta comercial")
+    src.add("doc-rotate", Classification.PUBLIC, "Folleto para rotar enlace")
     return src
 
 
@@ -164,8 +167,16 @@ class Api:
         return match.group(1)
 
     def unlock(self, token: str) -> str:
-        assert self.client.post(f"/s/{token}/otp").status_code == 200
-        r = self.client.post(f"/s/{token}/verify", json={"code": self.last_otp()})
+        """Persona específica: pide el código y lo verifica. Devuelve la sesión de acceso."""
+        assert self.client.post(f"{ACCESS}/{token}/otp").status_code == 200
+        r = self.client.post(f"{ACCESS}/{token}/verify", json={"code": self.last_otp()})
+        assert r.status_code == 200, r.text
+        access: str = r.json()["access_token"]
+        return access
+
+    def open_link(self, token: str) -> str:
+        """Cualquiera con el enlace: abre sin código."""
+        r = self.client.post(f"{ACCESS}/{token}/open")
         assert r.status_code == 200, r.text
         access: str = r.json()["access_token"]
         return access

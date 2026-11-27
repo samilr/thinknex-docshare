@@ -5,6 +5,8 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.core.logging import redact_path
+
 PROBLEM_JSON = "application/problem+json"
 
 
@@ -96,7 +98,7 @@ def problem(
         "title": title,
         "status": status,
         "detail": detail,
-        "instance": request.url.path if not request.url.path.startswith("/s/") else "/s/***",
+        "instance": redact_path(request.url.path),
         "request_id": getattr(request.state, "request_id", None),
         **ext,
     }

@@ -62,13 +62,13 @@ class Settings(BaseSettings):
     otp_ttl_minutes: int = 10
     otp_max_attempts: int = 5
     otp_max_sends: int = 5
-    access_token_ttl_minutes: int = 5
+    access_token_ttl_minutes: int = 30  # sesión del destinatario en el visor
 
     # Políticas de share
     default_expiry_hours: int = 72
     max_expiry_hours: int = 168
     default_max_accesses: int = 3
-    max_accesses_limit: int = 20
+    max_accesses_limit: int = 100
     snapshot_grace_hours: int = 24
 
     # Sistema documental (DMS)

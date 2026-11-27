@@ -23,6 +23,8 @@ dependencies = [
     "google-cloud-storage>=2.18",
     "google-auth>=2.35",
     "requests>=2.32",
+    "pypdfium2>=5.15.2",
+    "pillow>=13.0.0",
 ]
 
 [dependency-groups]
@@ -53,7 +55,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["app/db/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["reportlab.*", "google.cloud.*", "google.oauth2.*", "google.auth.*", "google.api_core.*"]
+module = ["reportlab.*", "google.cloud.*", "google.oauth2.*", "google.auth.*", "google.api_core.*", "pypdfium2.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

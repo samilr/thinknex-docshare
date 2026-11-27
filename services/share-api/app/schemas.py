@@ -5,7 +5,14 @@ from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.adapters.document_source import SourceDocument
-from app.domain.enums import Channel, Classification, Decision, ShareStatus
+from app.domain.enums import (
+    Audience,
+    Channel,
+    Classification,
+    Decision,
+    Permission,
+    ShareStatus,
+)
 from app.sensitivity.checker import SensitivityReport
 
 
@@ -29,15 +36,25 @@ class RecipientIn(BaseModel):
 
 class ShareRequest(BaseModel):
     document_id: str = Field(min_length=1, max_length=100, examples=["doc-003"])
-    recipient: RecipientIn
     channel: Channel
+    audience: Audience = Audience.SPECIFIC
+    permission: Permission = Permission.DOWNLOAD
+    recipient: RecipientIn | None = None
     reason: str = Field(min_length=3, max_length=500, examples=["Envío de informe al auditor"])
     expires_in_hours: int | None = Field(default=None, ge=1)
     max_accesses: int | None = Field(default=None, ge=1)
     acknowledge_sensitive: bool = False
 
     @model_validator(mode="after")
-    def _contact_matches_channel(self) -> Self:
+    def _consistent(self) -> Self:
+        if self.audience is Audience.ANYONE:
+            if self.channel is not Channel.LINK:
+                raise ValueError("'Cualquiera con el enlace' solo existe para el canal LINK")
+            if self.permission is Permission.EDIT:
+                raise ValueError("Un enlace para cualquier persona no puede permitir edición")
+            return self
+        if self.recipient is None:
+            raise ValueError("Se requiere el destinatario (o usar 'Cualquiera con el enlace')")
         if self.channel is Channel.EMAIL and not self.recipient.email:
             raise ValueError("El canal EMAIL requiere recipient.email")
         if self.channel in (Channel.WHATSAPP, Channel.SMS) and not self.recipient.phone:
@@ -47,7 +64,14 @@ class ShareRequest(BaseModel):
 
 class PrecheckRequest(BaseModel):
     document_id: str
-    recipient: RecipientIn
+    audience: Audience = Audience.SPECIFIC
+    recipient: RecipientIn | None = None
+
+    @model_validator(mode="after")
+    def _recipient_when_specific(self) -> Self:
+        if self.audience is Audience.SPECIFIC and self.recipient is None:
+            raise ValueError("Se requiere el destinatario")
+        return self
 
 
 class PrecheckResponse(BaseModel):
@@ -74,9 +98,15 @@ class RecipientOut(BaseModel):
 class ShareOut(BaseModel):
     id: uuid.UUID
     document: DocumentOut
-    recipient: RecipientOut
+    recipient: RecipientOut | None
     shared_by: str
     channel: Channel
+    audience: Audience
+    permission: Permission
+    link: str | None = Field(
+        default=None,
+        description="Solo al crear (canal LINK) o al regenerarlo: no se puede recuperar después",
+    )
     reason: str
     status: ShareStatus
     created_at: datetime

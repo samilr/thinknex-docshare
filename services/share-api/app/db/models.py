@@ -119,8 +119,10 @@ class Share(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"))
     shared_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    recipient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("recipients.id"))
+    recipient_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("recipients.id"))
     channel: Mapped[str] = mapped_column(String(16))
+    permission: Mapped[str] = mapped_column(String(8), default="DOWNLOAD")
+    audience: Mapped[str] = mapped_column(String(8), default="SPECIFIC")
     reason: Mapped[str] = mapped_column(Text)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     status: Mapped[str] = mapped_column(String(16))
@@ -134,7 +136,7 @@ class Share(Base):
     revoked_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
 
     document: Mapped[Document] = relationship(lazy="joined")
-    recipient: Mapped[Recipient] = relationship(lazy="joined")
+    recipient: Mapped[Recipient | None] = relationship(lazy="joined")
     sharer: Mapped[User] = relationship(foreign_keys=[shared_by], lazy="joined")
 
 

@@ -35,7 +35,7 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 @router.post("/precheck", response_model=PrecheckResponse, responses=_ERRORS)
 def precheck(body: PrecheckRequest, user: SharerDep, service: ShareServiceDep) -> PrecheckResponse:
     """Evalúa la sensibilidad sin compartir: permite a la interfaz advertir antes de enviar."""
-    return service.precheck(user, body.document_id, body.recipient)
+    return service.precheck(user, body.document_id, body.recipient, body.audience)
 
 
 @router.post("", response_model=ShareOut, status_code=status.HTTP_201_CREATED, responses=_ERRORS)
@@ -88,3 +88,11 @@ def revoke_share(
     share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep
 ) -> ShareOut:
     return service.revoke(user, share_id, ctx)
+
+
+@router.post("/{share_id}/link", response_model=ShareOut)
+def rotate_link(
+    share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep
+) -> ShareOut:
+    """Genera un enlace nuevo (canal LINK). El anterior deja de funcionar de inmediato."""
+    return service.rotate_link(user, share_id, ctx)
