@@ -26,6 +26,7 @@ import {
   IconMoon,
   IconSend,
   IconShieldCheck,
+  IconSparkles,
   IconShieldLock,
   IconSun,
   IconScale,
@@ -38,6 +39,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { RoleBadge } from "../components/badges";
 import { EnvironmentBadge } from "../components/EnvironmentBadge";
 import { type Role, useAuth } from "../auth/context";
+import { useAiStatus } from "../features/ai/api";
 import { labelOf, ROLE } from "../lib/labels";
 
 interface NavItem {
@@ -45,11 +47,19 @@ interface NavItem {
   label: string;
   icon: ComponentType<{ size?: number; stroke?: number }>;
   roles?: Role[];
+  requiresAi?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Resumen", icon: IconChartBar },
   { to: "/documentos", label: "Documentos", icon: IconFiles, roles: ["SHARER", "ADMIN"] },
+  {
+    to: "/preguntar",
+    label: "Preguntar",
+    icon: IconSparkles,
+    roles: ["SHARER", "ADMIN"],
+    requiresAi: true,
+  },
   { to: "/envios", label: "Envíos", icon: IconSend },
   { to: "/auditoria", label: "Auditoría", icon: IconShieldCheck, roles: ["AUDITOR", "ADMIN"] },
   { to: "/politicas", label: "Políticas", icon: IconScale, roles: ["ADMIN", "AUDITOR"] },
@@ -80,7 +90,11 @@ export function AppLayout() {
   const { user, hasRole, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const items = NAV_ITEMS.filter((item) => !item.roles || hasRole(...item.roles));
+  const aiStatus = useAiStatus();
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      (!item.roles || hasRole(...item.roles)) && (!item.requiresAi || aiStatus.data?.llm === true),
+  );
   const impersonating = !!user?.impersonator;
   const [compact, setCompact] = useLocalStorage({
     key: "thinknex-sidebar-compact",

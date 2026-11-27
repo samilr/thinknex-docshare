@@ -268,3 +268,59 @@ class FakeClassifier:
     def classify(self, *, title: str, redacted_text: str) -> LlmAssessment | None:
         self.received.append(redacted_text)
         return self.assessment
+
+
+class FakeLlm:
+    """Simula a Claude: responde citando el primer bloque del primer search_result recibido."""
+
+    model = "fake-llm"
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+        self.tool_script: list[object] = []
+
+    def stream(self, *, model, system, messages, max_tokens=2000):  # type: ignore[no-untyped-def]
+        from app.ai.llm import BlockEnd, Citation, Done, TextDelta, Usage
+
+        self.calls.append({"model": model, "system": system, "messages": messages})
+        results = [
+            b
+            for b in messages[-1]["content"]
+            if isinstance(b, dict) and b["type"] == "search_result"
+        ]
+        if not results:
+            yield TextDelta("No encontré esto en los documentos disponibles.")
+        else:
+            first = results[0]["content"][0]["text"]
+            yield TextDelta("Según los documentos: ")
+            yield TextDelta(first[:80])
+            yield Citation(0, 0, 1, first)
+            yield BlockEnd()
+        yield Done(Usage(model=model, input_tokens=120, output_tokens=30))
+
+    def tool_turn(self, *, model, system, messages, tools, max_tokens=4000):  # type: ignore[no-untyped-def]
+        from app.ai.llm import ToolTurn, Usage
+
+        self.calls.append({"model": model, "system": system, "messages": messages, "tools": tools})
+        step = self.tool_script.pop(0) if self.tool_script else {"text": "Listo."}
+        assert isinstance(step, dict)
+        if "tool" in step:
+            call = {
+                "type": "tool_use",
+                "id": f"tu_{len(self.calls)}",
+                "name": step["tool"],
+                "input": step["input"],
+            }
+            return ToolTurn(
+                content=[call],
+                stop_reason="tool_use",
+                usage=Usage(model=model, input_tokens=50, output_tokens=10),
+                tool_calls=[call],
+            )
+        block = {"type": "text", "text": step["text"]}
+        return ToolTurn(
+            content=[block],
+            stop_reason="end_turn",
+            usage=Usage(model=model, input_tokens=50, output_tokens=10),
+            text=step["text"],
+        )

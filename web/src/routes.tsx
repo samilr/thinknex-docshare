@@ -19,6 +19,7 @@ const ExplorerPage = lazy(() =>
 const RecipientPage = lazy(() =>
   import("./features/recipient/RecipientPage").then((m) => ({ default: m.RecipientPage })),
 );
+const AskPage = lazy(() => import("./pages/AskPage").then((m) => ({ default: m.AskPage })));
 const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
 const PoliciesPage = lazy(() =>
   import("./pages/PoliciesPage").then((m) => ({ default: m.PoliciesPage })),
@@ -59,6 +60,14 @@ export const routes: RouteObject[] = [
         ),
       },
       { path: "envios", element: <SharesPage /> },
+      {
+        path: "preguntar",
+        element: (
+          <RequireRoles roles={["SHARER", "ADMIN"]}>
+            <AskPage />
+          </RequireRoles>
+        ),
+      },
       {
         path: "auditoria",
         element: (

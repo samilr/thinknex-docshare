@@ -43,7 +43,7 @@ import {
 } from "@tabler/icons-react";
 import { modals } from "@mantine/modals";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/context";
 import { ClassificationBadge } from "../../components/badges";
 import { PageHeader } from "../../components/PageHeader";
@@ -154,7 +154,9 @@ export function ExplorerPage() {
   const setSearch = (value: string) => setSearchState({ location, value });
   const [q] = useDebouncedValue(search.trim(), 300);
   const items = useItems(libraryId, folderId ?? null, q);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [params] = useSearchParams();
+  const [selected, setSelected] = useState<string | null>(params.get("doc"));
+  const initialPage = Number(params.get("page")) || undefined;
   const [sharing, setSharing] = useState<LibraryDocument | null>(null);
   const [versionFor, setVersionFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<LibraryDocument | null>(null);
@@ -491,6 +493,7 @@ export function ExplorerPage() {
 
       <DocumentPanel
         key={selected ?? "none"}
+        initialPage={selected === params.get("doc") ? initialPage : undefined}
         documentId={selected}
         onClose={() => setSelected(null)}
         onShare={setSharing}

@@ -11,6 +11,7 @@ from app.adapters.channels.email_smtp import SmtpEmailChannel
 from app.adapters.channels.mock_messaging import MockMessagingChannel
 from app.adapters.document_source import DocumentSource, HttpDocumentSource
 from app.adapters.storage import BlobStorage, GcsBlobStorage, S3BlobStorage
+from app.ai.llm import ClaudeLlm, Llm
 from app.ai.providers import Embedder, FakeEmbedder, VertexEmbedder
 from app.core.config import Settings
 from app.db.session import session_factory
@@ -27,6 +28,7 @@ class Components:
     channels: ChannelRegistry
     checker: SensitivityChecker
     embedder: Embedder = field(default_factory=FakeEmbedder)
+    llm: Llm | None = None
 
 
 def _secret(value: object) -> str | None:
@@ -91,6 +93,13 @@ def build_embedder(settings: Settings) -> Embedder:
     return FakeEmbedder()
 
 
+def build_llm(settings: Settings) -> Llm | None:
+    key = _secret(settings.anthropic_api_key) or os.environ.get("ANTHROPIC_API_KEY")
+    if not settings.ai_enabled or not key:
+        return None
+    return ClaudeLlm(api_key=key, timeout=settings.ai_timeout_seconds)
+
+
 def build_components(settings: Settings) -> Components:
     return Components(
         session_factory=session_factory(settings.database_url),
@@ -104,4 +113,5 @@ def build_components(settings: Settings) -> Components:
         channels=build_channels(settings),
         checker=build_checker(settings),
         embedder=build_embedder(settings),
+        llm=build_llm(settings),
     )

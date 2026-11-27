@@ -32,6 +32,7 @@ import {
   IconPoint,
   IconRefresh,
   IconShare,
+  IconSparkles,
   IconTrash,
   IconUpload,
   IconUsers,
@@ -49,6 +50,8 @@ import {
 } from "../../components/badges";
 import { revealLink, type Share } from "../share/api";
 import { EditShareModal } from "../share/EditShareModal";
+import { AskPanel } from "../ai/AskPanel";
+import { useAiStatus } from "../ai/api";
 import { LinkReveal } from "../share/LinkReveal";
 import { formatDateTime, formatRelative } from "../../lib/format";
 import { eventSummary } from "../../lib/events";
@@ -66,7 +69,17 @@ import {
 import { fileKind, formatBytes } from "./files";
 import { FileIcon } from "./icons";
 
-function Preview({ id, mime, version }: { id: string; mime: string; version: number }) {
+function Preview({
+  id,
+  mime,
+  version,
+  page,
+}: {
+  id: string;
+  mime: string;
+  version: number;
+  page?: number;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,8 +136,9 @@ function Preview({ id, mime, version }: { id: string; mime: string; version: num
   }
   return (
     <iframe
+      key={page ?? 0}
       title="Vista previa del documento"
-      src={url!}
+      src={page ? `${url!}#page=${page}` : url!}
       style={{ width: "100%", height: "68vh", border: 0, borderRadius: 8 }}
     />
   );
@@ -172,6 +186,7 @@ export function DocumentPanel({
   onDelete,
   confirmDelete,
   canShare,
+  initialPage,
 }: {
   documentId: string | null;
   onClose: () => void;
@@ -182,10 +197,14 @@ export function DocumentPanel({
   onDelete: (doc: LibraryDocument) => boolean;
   confirmDelete: (doc: LibraryDocument) => void;
   canShare: boolean;
+  /** Página a mostrar al abrir (por ejemplo, desde una cita de la IA). */
+  initialPage?: number;
 }) {
   const { user, hasRole } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<string | null>("preview");
+  const [page, setPage] = useState<number | undefined>(initialPage);
+  const aiStatus = useAiStatus();
   const detail = useDocumentDetail(documentId);
   const access = useAccess(tab === "access" ? documentId : null);
   const activity = useActivity(tab === "activity" ? documentId : null);
@@ -322,6 +341,11 @@ export function DocumentPanel({
               <Tabs.Tab value="activity" leftSection={<IconActivity size={14} />}>
                 Actividad
               </Tabs.Tab>
+              {aiStatus.data?.llm && (
+                <Tabs.Tab value="ask" leftSection={<IconSparkles size={14} />}>
+                  Preguntar
+                </Tabs.Tab>
+              )}
             </Tabs.List>
 
             <Tabs.Panel value="preview" pt="md">
@@ -342,6 +366,7 @@ export function DocumentPanel({
                 id={doc.id}
                 mime={doc.mime_type}
                 version={version}
+                page={page}
               />
             </Tabs.Panel>
 
@@ -582,6 +607,17 @@ export function DocumentPanel({
                   );
                 })}
               </Stack>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="ask" pt="md">
+              <AskPanel
+                documentIds={[doc.id]}
+                placeholder="Pregunta algo sobre este documento…"
+                onOpenSource={(source) => {
+                  setPage(source.page_from);
+                  setTab("preview");
+                }}
+              />
             </Tabs.Panel>
 
             <Tabs.Panel value="activity" pt="md">

@@ -876,6 +876,63 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Status */
+    get: operations["status_api_v1_ai_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/ai/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Semantic Search
+     * @description Búsqueda híbrida (semántica + texto) en los documentos visibles. No usa el LLM.
+     */
+    get: operations["semantic_search_api_v1_ai_search_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/ai/ask": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ask
+     * @description Pregunta sobre los documentos. Streaming SSE: sources, text, citation, done.
+     */
+    post: operations["ask_api_v1_ai_ask_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -928,6 +985,26 @@ export interface components {
       suggested_classification: string | null;
       /** Suggestion Reason */
       suggestion_reason: string | null;
+    };
+    /** AiStatusOut */
+    AiStatusOut: {
+      /** Enabled */
+      enabled: boolean;
+      /** Llm */
+      llm: boolean;
+      /** Chat Model */
+      chat_model: string | null;
+    };
+    /** AskRequest */
+    AskRequest: {
+      /** Question */
+      question: string;
+      /** Library Id */
+      library_id?: string | null;
+      /** Folder Id */
+      folder_id?: string | null;
+      /** Document Ids */
+      document_ids?: string[];
     };
     /**
      * Audience
@@ -1000,6 +1077,8 @@ export interface components {
       | "PASSWORD_RESET"
       | "TOKEN_REUSE_DETECTED"
       | "IMPERSONATION_STARTED"
+      | "AI_QUERY"
+      | "AI_ACTION_PROPOSED"
       | "IMPERSONATION_ENDED"
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
@@ -1748,6 +1827,29 @@ export interface components {
       description: string;
       /** Document Count */
       document_count: number;
+    };
+    /** SourceOut */
+    SourceOut: {
+      /** N */
+      n: number;
+      /** Document Id */
+      document_id: string;
+      /** Title */
+      title: string;
+      /** Filename */
+      filename: string;
+      /** Library Id */
+      library_id: string | null;
+      /** Folder Id */
+      folder_id: string | null;
+      /** Page From */
+      page_from: number;
+      /** Page To */
+      page_to: number;
+      /** Snippet */
+      snippet: string;
+      /** Score */
+      score: number;
     };
     /** SourcePage */
     SourcePage: {
@@ -3615,6 +3717,90 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  status_api_v1_ai_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiStatusOut"];
+        };
+      };
+    };
+  };
+  semantic_search_api_v1_ai_search_get: {
+    parameters: {
+      query: {
+        q: string;
+        library_id?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SourceOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ask_api_v1_ai_ask_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AskRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
         headers: {
           [name: string]: unknown;
         };
