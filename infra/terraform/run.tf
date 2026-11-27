@@ -60,8 +60,9 @@ resource "google_cloud_run_v2_service" "document_api" {
         container_port = 8001
       }
       resources {
-        limits   = { cpu = "1", memory = "512Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "512Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
       }
       volume_mounts {
         name       = "cloudsql"
@@ -143,8 +144,9 @@ resource "google_cloud_run_v2_service" "share_api" {
         container_port = 8000
       }
       resources {
-        limits   = { cpu = "1", memory = "512Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "512Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
       }
       volume_mounts {
         name       = "cloudsql"
@@ -201,8 +203,9 @@ resource "google_cloud_run_v2_service" "web" {
         container_port = 8080
       }
       resources {
-        limits   = { cpu = "1", memory = "256Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "256Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
       }
       env {
         name  = "SHARE_API_URL"
