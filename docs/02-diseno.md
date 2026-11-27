@@ -171,7 +171,7 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
 - **Portal web** (React + Vite + TypeScript) servido en el mismo origen que la API mediante nginx (ADR-0008).
 - **Explorador de documentos estilo SharePoint** (ADR-0009):
   - bibliotecas por área y carpetas con migas de pan;
-  - subida con arrastrar y soltar, y versiones;
+  - subida con arrastrar y soltar, versiones y renombrado auditado;
   - panel del archivo con vista previa (marca de agua y auditoría), detalles e historial,
     **Personas con acceso** (permiso, revocación y nuevo enlace), actividad y **Compartir** desde el
     propio archivo.

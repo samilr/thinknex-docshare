@@ -237,4 +237,11 @@ apunta a un **snapshot** de la versión vigente al momento de compartir, así qu
 versión no cambia lo que ya recibió un destinatario (ADR-0002, ADR-0009).
 
 Eventos de auditoría de la biblioteca: `DOCUMENT_UPLOADED`, `DOCUMENT_VERSION_UPLOADED`,
-`DOCUMENT_VIEWED` (vista o descarga interna, con versión y modo) y `FOLDER_CREATED`.
+`DOCUMENT_RENAMED`, `DOCUMENT_VIEWED` (vista o descarga interna, con versión y modo) y
+`FOLDER_CREATED`.
+
+**Renombrar** (`PATCH /api/v1/library/documents/{id}`) cambia el título y el nombre de archivo en el
+DMS, conserva la extensión y no crea una versión. Un nombre repetido en la misma carpeta es un
+conflicto (409). La bitácora es `DOCUMENT_RENAMED` en la auditoría encadenada, con quién lo hizo,
+cuándo y desde qué IP, más `from_title`, `to_title`, `from_filename` y `to_filename`. Lo ya
+compartido conserva el nombre de su snapshot.

@@ -163,6 +163,51 @@ describe("explorador de documentos", () => {
     await waitFor(() => expect(versionUploaded).toBe(true));
   });
 
+  it("renombra un archivo conservando la extensión y muestra el conflicto", async () => {
+    loggedInAs(["SHARER"]);
+    mockLibrary();
+    const sent: string[] = [];
+    server.use(
+      http.patch("*/api/v1/library/documents/doc-006", async ({ request }) => {
+        const { name } = (await request.json()) as { name: string };
+        sent.push(name);
+        if (name === "Existente") {
+          return HttpResponse.json(
+            {
+              detail: "Ya existe un archivo con ese nombre en esta ubicación",
+              code: "name_conflict",
+            },
+            { status: 409 },
+          );
+        }
+        return HttpResponse.json({ ...doc, title: name, filename: `${name}.pdf` });
+      }),
+    );
+    renderApp("/documentos/comercial/f-1");
+    await screen.findByText("Certificado de cliente");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Acciones de Certificado de cliente" })[0]!,
+    );
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Renombrar" }));
+
+    const input = await screen.findByLabelText("Nuevo nombre");
+    expect(input).toHaveValue("certificado");
+    expect(screen.getByText(".pdf")).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Renombrar" });
+    expect(submit).toBeDisabled(); // sin cambios
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Existente");
+    await userEvent.click(submit);
+    expect(await screen.findByText(/Ya existe un archivo con ese nombre/)).toBeInTheDocument();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Certificado María 2026");
+    await userEvent.click(submit);
+    await waitFor(() => expect(screen.queryByLabelText("Nuevo nombre")).not.toBeInTheDocument());
+    expect(sent).toEqual(["Existente", "Certificado María 2026"]);
+  });
+
   it("un auditor no accede a la biblioteca", async () => {
     loggedInAs(["AUDITOR"]);
     renderApp("/documentos");

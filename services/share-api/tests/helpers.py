@@ -217,6 +217,26 @@ class FakeDocumentSource:
         self._store(meta, file.data, comment=comment, actor=actor)
         return meta
 
+    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument:
+        current = self.get_metadata(doc_id)
+        stem = name.strip().strip(".")
+        if not stem or "/" in stem:
+            raise ValidationFailedError("Nombre inválido")
+        filename = f"{stem}.{current.filename.rsplit('.', 1)[-1]}"
+        for meta, _ in self.docs.values():
+            if (
+                meta.id != doc_id
+                and meta.library_id == current.library_id
+                and meta.folder_id == current.folder_id
+                and meta.filename.casefold() == filename.casefold()
+            ):
+                raise NameConflictError(
+                    "Ya existe un archivo con ese nombre en esta ubicación", document_id=meta.id
+                )
+        renamed = current.model_copy(update={"title": stem, "filename": filename})
+        self.docs[doc_id] = (renamed, self.docs[doc_id][1])
+        return renamed
+
     def ping(self) -> bool:
         return True
 

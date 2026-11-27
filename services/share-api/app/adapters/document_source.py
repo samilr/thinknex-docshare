@@ -105,6 +105,7 @@ class DocumentSource(Protocol):
     def upload_version(
         self, doc_id: str, *, file: UploadedFile, comment: str, actor: str
     ) -> SourceDocument: ...
+    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument: ...
     def ping(self) -> bool: ...
 
 
@@ -258,6 +259,10 @@ class HttpDocumentSource:
             data={"comment": comment},
             files={"file": (file.filename, file.data, file.content_type)},
         )
+        return SourceDocument.model_validate(response.json())
+
+    def rename(self, doc_id: str, *, name: str, actor: str) -> SourceDocument:
+        response = self._request("PATCH", f"/documents/{doc_id}", actor=actor, json={"name": name})
         return SourceDocument.model_validate(response.json())
 
     def ping(self) -> bool:

@@ -35,6 +35,7 @@ import {
   IconLayoutGrid,
   IconList,
   IconSearch,
+  IconPencil,
   IconShare,
   IconUpload,
   IconUsers,
@@ -55,6 +56,7 @@ import {
   useLibraries,
 } from "./api";
 import { DocumentPanel } from "./DocumentPanel";
+import { RenameModal } from "./RenameModal";
 import { FileIcon, LibraryIcon } from "./icons";
 import { NewVersionModal, UploadModal } from "./UploadModal";
 
@@ -151,6 +153,7 @@ export function ExplorerPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [sharing, setSharing] = useState<LibraryDocument | null>(null);
   const [versionFor, setVersionFor] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<LibraryDocument | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
 
@@ -188,6 +191,9 @@ export function ExplorerPage() {
         </Menu.Item>
         <Menu.Item leftSection={<IconShare size={16} />} onClick={() => setSharing(doc)}>
           Compartir
+        </Menu.Item>
+        <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setRenaming(doc)}>
+          Renombrar
         </Menu.Item>
         <Menu.Item leftSection={<IconUpload size={16} />} onClick={() => setVersionFor(doc.id)}>
           Nueva versión
@@ -446,7 +452,9 @@ export function ExplorerPage() {
         onClose={() => setSelected(null)}
         onShare={setSharing}
         onNewVersion={setVersionFor}
+        onRename={setRenaming}
       />
+      <RenameModal document={renaming} onClose={() => setRenaming(null)} />
       <ShareWizard
         document={sharing}
         opened={sharing !== null}

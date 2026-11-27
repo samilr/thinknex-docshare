@@ -86,6 +86,7 @@ export const EVENT: Record<string, string> = {
   TOKEN_REUSE_DETECTED: "Reutilización de sesión detectada",
   DOCUMENT_UPLOADED: "Archivo subido",
   DOCUMENT_VERSION_UPLOADED: "Nueva versión subida",
+  DOCUMENT_RENAMED: "Archivo renombrado",
   DOCUMENT_VIEWED: "Documento visualizado",
   FOLDER_CREATED: "Carpeta creada",
 };
@@ -102,6 +103,7 @@ export const EVENT_COLOR: Record<string, string> = {
   SHARE_CREATED: "blue",
   DOCUMENT_UPLOADED: "teal",
   DOCUMENT_VERSION_UPLOADED: "teal",
+  DOCUMENT_RENAMED: "violet",
   DOCUMENT_VIEWED: "gray",
   ACCESS_GRANTED: "green",
   SHARE_LINK_ROTATED: "yellow",

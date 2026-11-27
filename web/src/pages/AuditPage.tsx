@@ -23,6 +23,7 @@ import type { paths } from "../api/schema";
 import { ChannelLabel } from "../components/badges";
 import { PageHeader } from "../components/PageHeader";
 import { downloadText, formatDateTime, toCsv } from "../lib/format";
+import { eventSummary } from "../lib/events";
 import { CHANNEL, EVENT, EVENT_COLOR } from "../lib/labels";
 
 const PAGE_SIZE = 50;
@@ -217,9 +218,7 @@ export function AuditPage() {
                     <Table.Td ff="monospace">{e.ip ?? "—"}</Table.Td>
                     <Table.Td>
                       <Text size="xs" c="dimmed" lineClamp={1} maw={260}>
-                        {String(
-                          e.metadata.reason ?? e.metadata.decision ?? e.metadata.destination ?? "",
-                        )}
+                        {eventSummary(e)}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

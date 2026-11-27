@@ -453,7 +453,11 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /**
+     * Rename
+     * @description Renombra el archivo. Queda en la auditoría (DOCUMENT_RENAMED) con el nombre anterior.
+     */
+    patch: operations["rename_api_v1_library_documents__doc_id__patch"];
     trace?: never;
   };
   "/api/v1/library/documents/{doc_id}/content": {
@@ -888,6 +892,7 @@ export interface components {
       | "TOKEN_REUSE_DETECTED"
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
+      | "DOCUMENT_RENAMED"
       | "DOCUMENT_VIEWED"
       | "FOLDER_CREATED"
       | "ACCESS_GRANTED"
@@ -1022,6 +1027,14 @@ export interface components {
       /** Sha256 */
       sha256: string;
       classification: components["schemas"]["Classification"];
+    };
+    /** DocumentRename */
+    DocumentRename: {
+      /**
+       * Name
+       * @description Nuevo nombre, sin extensión
+       */
+      name: string;
     };
     /** DocumentViewOut */
     DocumentViewOut: {
@@ -2374,6 +2387,48 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["DocumentDetail"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  rename_api_v1_library_documents__doc_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DocumentRename"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LibraryDocument"];
+        };
+      };
+      /** @description name_conflict: ya existe ese nombre en la carpeta */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

@@ -209,6 +209,27 @@ class LibraryService:
             document=self._with_shares([document])[0], findings=findings, new_version=True
         )
 
+    def rename(self, user: User, doc_id: str, name: str, ctx: RequestContext) -> LibraryDocument:
+        """Renombra el archivo en el DMS y deja en la bitácora el nombre anterior, el nuevo y quién.
+
+        No altera lo ya compartido: cada envío conserva el título de su snapshot (ADR-0002).
+        """
+        before = self.source.get_metadata(doc_id)
+        after = self.source.rename(doc_id, name=name, actor=user.email)
+        if (after.title, after.filename) != (before.title, before.filename):
+            self._audit(
+                AuditEventType.DOCUMENT_RENAMED,
+                user,
+                ctx,
+                source_document_id=doc_id,
+                version=after.version,
+                from_title=before.title,
+                to_title=after.title,
+                from_filename=before.filename,
+                to_filename=after.filename,
+            )
+        return self._with_shares([after])[0]
+
     def detail(self, doc_id: str) -> DocumentDetail:
         document = self.source.get_metadata(doc_id)
         library = (

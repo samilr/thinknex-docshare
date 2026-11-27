@@ -11,7 +11,12 @@ from app.api.v1.audit import events_out
 from app.core.config import Settings
 from app.domain.enums import Classification
 from app.schemas import AuditEventOut, ShareOut
-from app.services.library_service import DocumentDetail, LibraryItems, UploadResult
+from app.services.library_service import (
+    DocumentDetail,
+    LibraryDocument,
+    LibraryItems,
+    UploadResult,
+)
 
 router = APIRouter(prefix="/library", tags=["library"])
 
@@ -103,6 +108,22 @@ async def upload_version(
     comment: Annotated[str, Form(max_length=500)] = "",
 ) -> UploadResult:
     return service.upload_version(user, doc_id, await _read(file, settings), comment, ctx)
+
+
+class DocumentRename(BaseModel):
+    name: str = Field(min_length=1, max_length=150, description="Nuevo nombre, sin extensión")
+
+
+@router.patch(
+    "/documents/{doc_id}",
+    response_model=LibraryDocument,
+    responses={409: {"description": "name_conflict: ya existe ese nombre en la carpeta"}},
+)
+def rename(
+    doc_id: str, body: DocumentRename, user: SharerDep, service: LibraryServiceDep, ctx: ContextDep
+) -> LibraryDocument:
+    """Renombra el archivo. Queda en la auditoría (DOCUMENT_RENAMED) con el nombre anterior."""
+    return service.rename(user, doc_id, body.name, ctx)
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentDetail)

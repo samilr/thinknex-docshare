@@ -162,3 +162,21 @@ def test_profile_defaults(app_env: str, storage: str, create_db: bool) -> None:
     assert (s.storage_backend, s.dms_create_database) == (storage, create_db)
     explicit = Settings(dms_api_key=SecretStr("k"), app_env=app_env, storage_backend="s3")  # type: ignore[arg-type]
     assert explicit.storage_backend == "s3"
+
+
+def test_rename_keeps_extension_and_detects_conflicts(client: TestClient) -> None:
+    first = upload(client, "Acta enero.pdf", PDF).json()
+    upload(client, "Acta febrero.pdf", PDF)
+    r = client.patch(f"/documents/{first['id']}", json={"name": "  Acta de enero 2026 "})
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "Acta de enero 2026"
+    assert r.json()["filename"] == "Acta de enero 2026.pdf"
+    assert r.json()["version"] == first["version"], "renombrar no crea una versión"
+
+    conflict = client.patch(f"/documents/{first['id']}", json={"name": "acta FEBRERO"})
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "name_conflict"
+    # Cambiar solo mayúsculas del propio archivo no es conflicto.
+    assert client.patch(f"/documents/{first['id']}", json={"name": "ACTA DE ENERO 2026"}).is_success
+    assert client.patch(f"/documents/{first['id']}", json={"name": "../.."}).status_code == 422
+    assert client.patch("/documents/doc-nope", json={"name": "x"}).status_code == 404

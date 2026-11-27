@@ -86,6 +86,9 @@ Terraform (ver el README).
    - **Compartir** desde el panel `Certificado de cliente` (doc-006) con un email externo. La revisión
      de seguridad muestra RUT, teléfono y tarjeta enmascarados; hay que confirmar antes de enviar.
    - **Nueva versión:** subir un archivo con el mismo nombre ofrece publicarlo como versión nueva.
+   - **Renombrar** desde el menú del archivo o su panel: la extensión no se edita, un nombre repetido
+     en la carpeta se rechaza y la pestaña *Actividad* muestra «nombre anterior» → «nombre nuevo»
+     con quién lo cambió.
 2. Cerrar sesión y entrar como **admin** → *Bandeja simulada* → *Abrir como destinatario* →
    *Enviarme el código* → copiar el código desde la bandeja y escribirlo. Se abre el **visor**: páginas
    con marca de agua y, con el permiso por defecto, el botón *Descargar*.

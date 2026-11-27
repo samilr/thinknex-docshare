@@ -26,6 +26,7 @@ import {
   IconDownload,
   IconEye,
   IconInfoCircle,
+  IconPencil,
   IconPoint,
   IconRefresh,
   IconShare,
@@ -44,6 +45,7 @@ import {
 } from "../../components/badges";
 import { LinkReveal } from "../share/LinkReveal";
 import { formatDateTime, formatRelative } from "../../lib/format";
+import { eventSummary } from "../../lib/events";
 import { EVENT, EVENT_COLOR } from "../../lib/labels";
 import {
   downloadDocument,
@@ -137,11 +139,13 @@ export function DocumentPanel({
   onClose,
   onShare,
   onNewVersion,
+  onRename,
 }: {
   documentId: string | null;
   onClose: () => void;
   onShare: (doc: LibraryDocument) => void;
   onNewVersion: (documentId: string) => void;
+  onRename: (doc: LibraryDocument) => void;
 }) {
   const { user, hasRole } = useAuth();
   const queryClient = useQueryClient();
@@ -240,6 +244,13 @@ export function DocumentPanel({
               onClick={() => onNewVersion(doc.id)}
             >
               Nueva versión
+            </Button>
+            <Button
+              variant="default"
+              leftSection={<IconPencil size={16} />}
+              onClick={() => onRename(doc)}
+            >
+              Renombrar
             </Button>
           </Group>
 
@@ -507,6 +518,7 @@ export function DocumentPanel({
                         </Text>
                       }
                     >
+                      {eventSummary(e) && <Text size="xs">{eventSummary(e)}</Text>}
                       <Text size="xs" c="dimmed">
                         {formatDateTime(e.occurred_at)} · {e.actor ?? e.actor_type}
                         {e.channel ? ` · ${e.channel}` : ""}

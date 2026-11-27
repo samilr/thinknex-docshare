@@ -35,6 +35,12 @@ class FolderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 
 
+class DocumentRename(BaseModel):
+    """Nuevo nombre sin extensión: la extensión la define el tipo real del archivo."""
+
+    name: str = Field(min_length=1, max_length=150)
+
+
 class DocumentMeta(BaseModel):
     id: str
     title: str

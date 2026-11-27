@@ -50,10 +50,21 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await shot(page, "03-subida");
   await uploadDialog.getByRole("button", { name: "Cerrar" }).click();
 
-  await page.getByText(fileName.replace(".pdf", ""), { exact: true }).click();
+  // Renombrar: la extensión se conserva y el cambio queda en la actividad del archivo.
+  const finalName = fileName.replace(".pdf", "-final");
+  await page.getByRole("button", { name: `Acciones de ${fileName.replace(".pdf", "")}` }).click();
+  await page.getByRole("menuitem", { name: "Renombrar" }).click();
+  await page.getByLabel("Nuevo nombre").fill(finalName);
+  await page.getByRole("button", { name: "Renombrar", exact: true }).click();
+  await expect(page.getByText(finalName, { exact: true })).toBeVisible();
+
+  await page.getByText(finalName, { exact: true }).click();
   const panel = page.getByRole("dialog");
   await expect(panel.locator('iframe[title="Vista previa del documento"]')).toBeVisible();
   await shot(page, "04-visor");
+  await panel.getByRole("tab", { name: /Actividad/ }).click();
+  await expect(panel.getByText(`«${fileName}» → «${finalName}.pdf»`)).toBeVisible();
+  await panel.getByRole("tab", { name: /Vista previa/ }).click();
   await panel.getByRole("button", { name: "Compartir" }).first().click();
 
   const wizard = page.getByRole("dialog").filter({ hasText: "Revisar seguridad" });

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import Document, DocumentVersion, Folder, Library
 from app.schemas import Classification, DocumentMeta, DocumentPage, LibraryOut
 from app.storage import BlobStore
+from app.validation import InvalidUpload, safe_filename
 
 
 class NotFound(LookupError):
@@ -254,6 +255,36 @@ def add_version(
         )
     )
     doc.current_version = version
+    doc.updated_at = datetime.now(UTC)
+    db.flush()
+    return doc
+
+
+def rename_document(db: Session, doc: Document, name: str) -> Document:
+    """Cambia el nombre visible y el nombre de archivo, conservando la extensión.
+
+    No crea una versión: el contenido no cambia. Un nombre repetido en la misma carpeta es un
+    conflicto, igual que al subir.
+    """
+    extension = doc.filename.rsplit(".", 1)[-1]
+    try:
+        filename = safe_filename(f"{name.strip()}.{extension}")
+    except InvalidUpload as exc:
+        raise Invalid("Nombre inválido") from exc
+    existing = db.scalar(
+        select(Document).where(
+            Document.id != doc.id,
+            Document.library_id == doc.library_id,
+            Document.folder_id.is_(None)
+            if doc.folder_id is None
+            else Document.folder_id == doc.folder_id,
+            func.lower(Document.filename) == filename.casefold(),
+        )
+    )
+    if existing is not None:
+        raise NameConflict(existing.id)
+    doc.filename = filename
+    doc.title = filename.rsplit(".", 1)[0]
     doc.updated_at = datetime.now(UTC)
     db.flush()
     return doc

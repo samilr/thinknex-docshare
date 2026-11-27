@@ -25,6 +25,7 @@ from app.schemas import (
     Classification,
     DocumentMeta,
     DocumentPage,
+    DocumentRename,
     FolderCreate,
     FolderOut,
     LibraryOut,
@@ -189,6 +190,31 @@ def get_document(doc_id: str, db: DbDep) -> DocumentMeta:
         return repo.to_meta(repo.get_document(db, doc_id))
     except repo.NotFound as exc:
         raise _not_found(exc) from exc
+
+
+@router.patch(
+    "/documents/{doc_id}",
+    response_model=DocumentMeta,
+    tags=["documents"],
+    responses={409: {"description": "name_conflict: ya existe ese nombre en la carpeta"}},
+)
+def rename_document(
+    doc_id: str, body: DocumentRename, db: DbDep, actor: ActorDep
+) -> DocumentMeta | JSONResponse:
+    """Renombra el archivo (no crea versión). La bitácora del cambio la registra share-api."""
+    try:
+        doc = repo.rename_document(db, repo.get_document(db, doc_id), body.name)
+    except repo.NotFound as exc:
+        raise _not_found(exc) from exc
+    except repo.NameConflict as exc:
+        return JSONResponse(
+            {"detail": str(exc), "code": "name_conflict", "document_id": exc.document_id},
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    except repo.Invalid as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    del actor  # la autoría queda en la auditoría de share-api (X-Acting-User se exige igual)
+    return repo.to_meta(doc)
 
 
 @router.get("/documents/{doc_id}/versions", response_model=list[VersionOut], tags=["documents"])

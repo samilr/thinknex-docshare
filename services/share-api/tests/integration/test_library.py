@@ -147,3 +147,39 @@ def test_library_requires_sharer_role(api: Api) -> None:
 def test_invalid_content_is_rejected(api: Api) -> None:
     r = upload(api, "malware.pdf", b"MZ\x90\x00 not a pdf")
     assert r.status_code == 422
+
+
+def test_rename_is_audited_with_previous_name(api: Api) -> None:
+    suffix = uuid.uuid4().hex[:6]
+    doc = upload(api, f"borrador-{suffix}.pdf", make_pdf("x")).json()["document"]
+    other = upload(api, f"final-{suffix}.pdf", make_pdf("y")).json()["document"]
+    shared = api.share(document_id=doc["id"])
+    url = f"/api/v1/library/documents/{doc['id']}"
+
+    r = api.client.patch(url, json={"name": f"Propuesta {suffix}"}, headers=ana(api))
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == f"Propuesta {suffix}"
+    assert r.json()["filename"] == f"Propuesta {suffix}.pdf"
+    assert r.json()["version"] == 1, "renombrar no crea versión"
+
+    conflict = api.client.patch(url, json={"name": f"final-{suffix}"}, headers=ana(api))
+    assert conflict.status_code == 409 and conflict.json()["document_id"] == other["id"]
+    # Mismo nombre: no hay cambio y no se registra nada.
+    assert api.client.patch(url, json={"name": f"Propuesta {suffix}"}, headers=ana(api)).is_success
+
+    renamed = api.audit(event_type="DOCUMENT_RENAMED")
+    mine = [e for e in renamed if e["metadata"]["source_document_id"] == doc["id"]]  # type: ignore[index]
+    assert len(mine) == 1
+    event = mine[0]
+    assert event["actor"] == "Ana Rojas <ana@thinknex.example>"
+    assert event["metadata"]["from_filename"] == f"borrador-{suffix}.pdf"  # type: ignore[index]
+    assert event["metadata"]["to_filename"] == f"Propuesta {suffix}.pdf"  # type: ignore[index]
+    activity = api.client.get(f"{url}/activity", headers=ana(api)).json()
+    assert activity[0]["event_type"] == "DOCUMENT_RENAMED"
+
+    # Lo ya compartido conserva el nombre de su snapshot.
+    share = api.client.get(f"/api/v1/shares/{shared['id']}", headers=ana(api)).json()
+    assert share["document"]["title"] == f"borrador-{suffix}"
+
+    carla = api.headers("carla@thinknex.example")
+    assert api.client.patch(url, json={"name": "x"}, headers=carla).status_code == 403

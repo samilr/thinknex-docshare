@@ -152,6 +152,15 @@ export async function uploadVersion(
   return data;
 }
 
+export async function renameDocument(id: string, name: string): Promise<LibraryDocument> {
+  const { data, error } = await api.PATCH("/api/v1/library/documents/{doc_id}", {
+    params: { path: { doc_id: id } },
+    body: { name },
+  });
+  if (!data) throw new Error(problemMessage(error, "No fue posible renombrar el archivo"));
+  return data;
+}
+
 export async function createFolder(libraryId: string, parentId: string | null, name: string) {
   const { data, error } = await api.POST("/api/v1/library/folders", {
     body: { library_id: libraryId, parent_id: parentId, name },
