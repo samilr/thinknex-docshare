@@ -6,6 +6,9 @@ export function eventSummary(event: {
   if (event.event_type === "DOCUMENT_RENAMED") {
     return `«${String(m.from_filename ?? m.from_title)}» → «${String(m.to_filename ?? m.to_title)}»`;
   }
+  if (event.event_type.startsWith("IMPERSONATION_")) {
+    return `Como ${String(m.target_email)}`;
+  }
   if (event.event_type === "DOCUMENT_RECLASSIFIED") {
     return `${String(m.from_classification)} → ${String(m.to_classification)}`;
   }

@@ -11,6 +11,8 @@ export interface AuthState {
   login: (email: string, password: string) => Promise<Me>;
   logout: () => Promise<void>;
   applySession: (session: Session) => void;
+  impersonate: (userId: string) => Promise<Me>;
+  stopImpersonation: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
 }
 

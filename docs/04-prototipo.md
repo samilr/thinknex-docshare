@@ -108,9 +108,13 @@ Terraform (ver el README).
    (Bloquear, clasificación Confidencial, medio WhatsApp). El AUDITOR ve la página en solo lectura.
    El admin también entra a *Documentos*: sube, edita (nombre y **clasificación**) y **elimina**
    archivos, y también puede compartirlos. Eliminar revoca los envíos activos del archivo.
-5. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
+5. Como **admin** → *Usuarios → (menú de Ana) → Actuar como este usuario*: el portal se ve como
+   Ana, con un aviso "Actuando como…" y el botón *Volver a mi cuenta*. Lo que se haga queda a
+   nombre de Ana con "vía admin@…" en la auditoría (ADR-0012). El *Resumen* lleva a cada pantalla
+   al tocar sus indicadores, y el admin también ve *Auditoría*.
+6. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
    el nuevo usuario debe cambiarla al entrar.
-6. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
+7. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
    exportación a CSV. Aparecen `ACCESS_GRANTED`, `DOCUMENT_VIEWED`, `DOCUMENT_VERSION_UPLOADED`
    (actor destinatario) y `SHARE_LINK_ROTATED`.
 

@@ -214,7 +214,14 @@ export function AuditPage() {
                         {EVENT[e.event_type] ?? e.event_type}
                       </Badge>
                     </Table.Td>
-                    <Table.Td>{e.actor ?? e.actor_type}</Table.Td>
+                    <Table.Td>
+                      {e.actor ?? e.actor_type}
+                      {typeof e.metadata.impersonated_by === "string" && (
+                        <Text size="xs" c="orange">
+                          vía {e.metadata.impersonated_by}
+                        </Text>
+                      )}
+                    </Table.Td>
                     <Table.Td>{e.channel ? <ChannelLabel channel={e.channel} /> : "—"}</Table.Td>
                     <Table.Td ff="monospace">{e.ip ?? "—"}</Table.Td>
                     <Table.Td>

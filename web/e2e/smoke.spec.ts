@@ -82,7 +82,7 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await expect(panel.getByText("Pedro Auditor")).toBeVisible();
   await shot(page, "06-personas-con-acceso");
   await page.keyboard.press("Escape");
-  await page.getByRole("link", { name: "Envíos" }).click();
+  await page.getByRole("link", { name: "Envíos", exact: true }).click();
   await expect(page.getByRole("row", { name: /Pedro Auditor/ }).first()).toBeVisible();
   await shot(page, "07-envios");
   await logout(page);
@@ -120,7 +120,7 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
   await recipientPage.close();
 
-  await page.getByRole("link", { name: "Usuarios" }).click();
+  await page.getByRole("link", { name: "Usuarios", exact: true }).click();
   await expect(page.getByText("carla@thinknex.example")).toBeVisible();
   await shot(page, "10-usuarios");
 
@@ -139,7 +139,7 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await logout(page);
 
   await login(page, "carla@thinknex.example", PASSWORD);
-  await page.getByRole("link", { name: "Auditoría" }).click();
+  await page.getByRole("link", { name: "Auditoría", exact: true }).click();
   await expect(page.getByText("Cadena de auditoría íntegra")).toBeVisible();
   await page.getByRole("combobox", { name: "Evento" }).click();
   await page.getByRole("option", { name: "Archivo subido" }).click();

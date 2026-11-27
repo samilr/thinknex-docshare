@@ -54,6 +54,8 @@ def _with_request_id(details: dict[str, Any] | None, ctx: RequestContext | None)
     merged = dict(details or {})
     if ctx and ctx.request_id:
         merged["request_id"] = ctx.request_id
+    if ctx and ctx.impersonator:
+        merged["impersonated_by"] = ctx.impersonator
     return merged
 
 

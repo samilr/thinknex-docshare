@@ -63,14 +63,22 @@ def _decode(token: str, secret: str, expected_type: str) -> dict[str, Any]:
     return claims
 
 
-def create_user_token(user_id: uuid.UUID, roles: list[str], secret: str, ttl_minutes: int) -> str:
+def create_user_token(
+    user_id: uuid.UUID,
+    roles: list[str],
+    secret: str,
+    ttl_minutes: int,
+    impersonator_id: uuid.UUID | None = None,
+) -> str:
     """Access token de corta vida. Los roles viajan como información para el cliente; la API
-    siempre vuelve a leer usuario y roles desde la BD (una desactivación aplica de inmediato)."""
-    return _encode(
-        {"sub": str(user_id), "roles": roles, "typ": USER_TOKEN},
-        secret,
-        timedelta(minutes=ttl_minutes),
-    )
+    siempre vuelve a leer usuario y roles desde la BD (una desactivación aplica de inmediato).
+
+    ``act`` (RFC 8693) identifica al ADMIN que actúa como este usuario, si lo hay.
+    """
+    claims: dict[str, Any] = {"sub": str(user_id), "roles": roles, "typ": USER_TOKEN}
+    if impersonator_id is not None:
+        claims["act"] = {"sub": str(impersonator_id)}
+    return _encode(claims, secret, timedelta(minutes=ttl_minutes))
 
 
 def decode_user_token(token: str, secret: str) -> dict[str, Any]:

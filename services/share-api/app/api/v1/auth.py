@@ -5,14 +5,15 @@ refresh token (opaco, rotativo) viaja en una cookie httpOnly + Secure + SameSite
 a /api/v1/auth. El frontend se sirve en el mismo origen, así que no hace falta CORS.
 """
 
+import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 
-from app.api.deps import AuthServiceDep, ContextDep, SessionUserDep, SettingsDep
+from app.api.deps import AdminDep, AuthServiceDep, ContextDep, SessionUserDep, SettingsDep
 from app.core.config import Settings
 from app.db.models import User
 from app.services.auth_service import IssuedSession
@@ -33,6 +34,12 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=1, max_length=256)
 
 
+class ImpersonatorOut(BaseModel):
+    id: str
+    email: str
+    name: str
+
+
 class MeOut(BaseModel):
     id: str
     email: str
@@ -40,6 +47,11 @@ class MeOut(BaseModel):
     roles: list[str]
     must_change_password: bool
     last_login_at: datetime | None
+    impersonator: ImpersonatorOut | None = None
+
+
+class ImpersonateRequest(BaseModel):
+    user_id: uuid.UUID
 
 
 class SessionOut(BaseModel):
@@ -49,14 +61,19 @@ class SessionOut(BaseModel):
     user: MeOut
 
 
-def me_out(user: User) -> MeOut:
+def me_out(user: User, impersonator: User | None = None) -> MeOut:
     return MeOut(
         id=str(user.id),
         email=user.email,
         name=user.name,
         roles=list(user.roles),
-        must_change_password=user.must_change_password,
+        must_change_password=user.must_change_password and impersonator is None,
         last_login_at=user.last_login_at,
+        impersonator=ImpersonatorOut(
+            id=str(impersonator.id), email=impersonator.email, name=impersonator.name
+        )
+        if impersonator
+        else None,
     )
 
 
@@ -72,7 +89,9 @@ def _session_response(session: IssuedSession, response: Response, settings: Sett
     )
     response.headers["Cache-Control"] = "no-store"
     return SessionOut(
-        access_token=session.access_token, expires_in=session.expires_in, user=me_out(session.user)
+        access_token=session.access_token,
+        expires_in=session.expires_in,
+        user=me_out(session.user, session.impersonator),
     )
 
 
@@ -136,8 +155,42 @@ def logout(
 
 
 @router.get("/me", response_model=MeOut)
-def me(user: SessionUserDep) -> MeOut:
-    return me_out(user)
+def me(request: Request, user: SessionUserDep) -> MeOut:
+    return me_out(user, getattr(request.state, "impersonator", None))
+
+
+@router.post(
+    "/impersonate", response_model=SessionOut, dependencies=[Depends(require_fetch_header)]
+)
+def impersonate(
+    body: ImpersonateRequest,
+    admin: AdminDep,
+    response: Response,
+    service: AuthServiceDep,
+    settings: SettingsDep,
+    ctx: ContextDep,
+    refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE)] = None,
+) -> SessionOut:
+    """Solo ADMIN: actuar como otro usuario (no administrador) para probar su experiencia.
+    Inicio, fin y cada acción quedan en la auditoría con ``impersonated_by``."""
+    session = service.impersonate(admin, body.user_id, refresh_token, ctx)
+    return _session_response(session, response, settings)
+
+
+@router.post(
+    "/impersonation/stop",
+    response_model=SessionOut,
+    dependencies=[Depends(require_fetch_header)],
+)
+def stop_impersonation(
+    response: Response,
+    service: AuthServiceDep,
+    settings: SettingsDep,
+    ctx: ContextDep,
+    refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE)] = None,
+) -> SessionOut:
+    """Vuelve a la cuenta del ADMIN."""
+    return _session_response(service.stop_impersonation(refresh_token, ctx), response, settings)
 
 
 @router.post("/change-password", response_model=SessionOut)

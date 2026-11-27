@@ -311,6 +311,47 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/impersonate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Impersonate
+     * @description Solo ADMIN: actuar como otro usuario (no administrador) para probar su experiencia.
+     *     Inicio, fin y cada acción quedan en la auditoría con ``impersonated_by``.
+     */
+    post: operations["impersonate_api_v1_auth_impersonate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/impersonation/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stop Impersonation
+     * @description Vuelve a la cuenta del ADMIN.
+     */
+    post: operations["stop_impersonation_api_v1_auth_impersonation_stop_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/change-password": {
     parameters: {
       query?: never;
@@ -933,6 +974,8 @@ export interface components {
       | "PASSWORD_CHANGED"
       | "PASSWORD_RESET"
       | "TOKEN_REUSE_DETECTED"
+      | "IMPERSONATION_STARTED"
+      | "IMPERSONATION_ENDED"
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
       | "DOCUMENT_RENAMED"
@@ -1136,6 +1179,23 @@ export interface components {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
     };
+    /** ImpersonateRequest */
+    ImpersonateRequest: {
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
+    };
+    /** ImpersonatorOut */
+    ImpersonatorOut: {
+      /** Id */
+      id: string;
+      /** Email */
+      email: string;
+      /** Name */
+      name: string;
+    };
     /** InboxMessageOut */
     InboxMessageOut: {
       /**
@@ -1275,6 +1335,7 @@ export interface components {
       must_change_password: boolean;
       /** Last Login At */
       last_login_at: string | null;
+      impersonator?: components["schemas"]["ImpersonatorOut"] | null;
     };
     /** MetaOut */
     MetaOut: {
@@ -2295,6 +2356,76 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MeOut"];
+        };
+      };
+    };
+  };
+  impersonate_api_v1_auth_impersonate_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-requested-with"?: string | null;
+      };
+      path?: never;
+      cookie?: {
+        refresh_token?: string | null;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImpersonateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  stop_impersonation_api_v1_auth_impersonation_stop_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-requested-with"?: string | null;
+      };
+      path?: never;
+      cookie?: {
+        refresh_token?: string | null;
+      };
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

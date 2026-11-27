@@ -46,6 +46,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
+  const impersonate = useCallback(
+    async (userId: string) => {
+      const { data, error } = await api.POST("/api/v1/auth/impersonate", {
+        body: { user_id: userId },
+      });
+      if (!data) throw new Error(problemMessage(error, "No fue posible actuar como este usuario"));
+      queryClient.clear();
+      setSession(data);
+      return data.user;
+    },
+    [queryClient],
+  );
+
+  const stopImpersonation = useCallback(async () => {
+    const { data, error } = await api.POST("/api/v1/auth/impersonation/stop");
+    if (!data) throw new Error(problemMessage(error, "No fue posible volver a tu cuenta"));
+    queryClient.clear();
+    setSession(data);
+  }, [queryClient]);
+
   const value = useMemo<AuthState>(
     () => ({
       status,
@@ -54,9 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       applySession,
+      impersonate,
+      stopImpersonation,
       hasRole: (...roles: Role[]) => !!user && roles.some((r) => user.roles.includes(r)),
     }),
-    [status, user, loggedOut, login, logout, applySession],
+    [status, user, loggedOut, login, logout, applySession, impersonate, stopImpersonation],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { isEmail, isNotEmpty, useForm } from "@mantine/form";
 import { useDebouncedValue } from "@mantine/hooks";
+import { useNavigate } from "react-router";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +30,7 @@ import {
   IconSearch,
   IconUserCheck,
   IconUserOff,
+  IconUserShare,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { api, problemMessage, type Schemas, unwrap } from "../api/client";
@@ -161,7 +163,8 @@ function UserFormModal({
 }
 
 export function UsersPage() {
-  const { user: me } = useAuth();
+  const { user: me, impersonate } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [q] = useDebouncedValue(search, 300);
@@ -311,6 +314,31 @@ export function UsersPage() {
                           >
                             Reiniciar contraseña
                           </Menu.Item>
+                          {u.id !== me?.id && u.is_active && !u.roles.includes("ADMIN") && (
+                            <Menu.Item
+                              leftSection={<IconUserShare size={16} />}
+                              onClick={() =>
+                                modals.openConfirmModal({
+                                  title: "Actuar como este usuario",
+                                  children: (
+                                    <Text size="sm">
+                                      Verás la plataforma como {u.name} ({u.email}). Las acciones
+                                      quedan registradas a su nombre y al tuyo.
+                                    </Text>
+                                  ),
+                                  labels: { confirm: "Actuar como", cancel: "Cancelar" },
+                                  onConfirm: () =>
+                                    void impersonate(u.id)
+                                      .then(() => navigate("/"))
+                                      .catch((e: Error) =>
+                                        notifications.show({ color: "red", message: e.message }),
+                                      ),
+                                })
+                              }
+                            >
+                              Actuar como este usuario
+                            </Menu.Item>
+                          )}
                           {u.id !== me?.id && (
                             <Menu.Item
                               color={u.is_active ? "red" : "green"}

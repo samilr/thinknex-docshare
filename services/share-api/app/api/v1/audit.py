@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import OversightDep, DbDep
+from app.api.deps import DbDep, OversightDep
 from app.db.models import AuditEvent
 from app.domain.enums import AuditEventType, Channel
 from app.schemas import AuditEventOut, AuditPage, ChainVerificationOut

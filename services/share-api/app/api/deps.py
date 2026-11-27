@@ -47,11 +47,28 @@ def get_db(components: ComponentsDep) -> Iterator[Session]:
 DbDep = Annotated[Session, Depends(get_db, scope="function")]
 
 
-def get_request_context(request: Request) -> RequestContext:
+def _impersonator_email(request: Request, db: Session, settings: Settings) -> str | None:
+    """Si el bearer es de una sesión suplantada, el email del ADMIN que está detrás."""
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    try:
+        claims = decode_user_token(auth[7:], settings.jwt_secret.get_secret_value())
+        actor = claims.get("act")
+        if not isinstance(actor, dict):
+            return None
+        admin = db.get(User, uuid.UUID(str(actor.get("sub"))))
+    except (InvalidTokenError, ValueError):
+        return None
+    return admin.email if admin else None
+
+
+def get_request_context(request: Request, db: DbDep, settings: SettingsDep) -> RequestContext:
     return RequestContext(
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
         request_id=getattr(request.state, "request_id", None),
+        impersonator=_impersonator_email(request, db, settings),
     )
 
 
@@ -59,7 +76,10 @@ ContextDep = Annotated[RequestContext, Depends(get_request_context)]
 
 
 def get_session_user(
-    token: Annotated[str, Depends(oauth2_scheme)], db: DbDep, settings: SettingsDep
+    request: Request,
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: DbDep,
+    settings: SettingsDep,
 ) -> User:
     """Usuario autenticado y activo. Usuario y roles se leen SIEMPRE desde la BD."""
     unauthorized = HTTPException(
@@ -74,15 +94,24 @@ def get_session_user(
         raise unauthorized from None
     if user is None or not user.is_active:
         raise unauthorized
+    request.state.impersonator = None
+    actor = claims.get("act")
+    if isinstance(actor, dict):
+        # Suplantación: el ADMIN detrás debe seguir activo y con rol ADMIN.
+        admin = db.get(User, uuid.UUID(str(actor.get("sub"))))
+        if admin is None or not admin.is_active or not admin.has_any(Role.ADMIN.value):
+            raise unauthorized
+        request.state.impersonator = admin
     return user
 
 
 SessionUserDep = Annotated[User, Depends(get_session_user)]
 
 
-def get_current_user(user: SessionUserDep) -> User:
-    """Como ``get_session_user`` pero exige haber cambiado la contraseña temporal."""
-    if user.must_change_password:
+def get_current_user(request: Request, user: SessionUserDep) -> User:
+    """Como ``get_session_user`` pero exige haber cambiado la contraseña temporal (salvo que un
+    ADMIN esté actuando como el usuario: no le corresponde cambiar su contraseña)."""
+    if user.must_change_password and getattr(request.state, "impersonator", None) is None:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail="Debe cambiar su contraseña antes de continuar",

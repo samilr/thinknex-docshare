@@ -61,6 +61,8 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime]
     revoked_at: Mapped[datetime | None]
     replaced_by: Mapped[uuid.UUID | None]
+    # ADMIN que actúa como ``user_id`` (suplantación auditada); nulo en una sesión normal.
+    impersonator_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     ip: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

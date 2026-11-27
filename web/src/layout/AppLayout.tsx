@@ -1,8 +1,10 @@
 import {
   ActionIcon,
+  Alert,
   AppShell,
   Avatar,
   Burger,
+  Button,
   Group,
   Menu,
   NavLink,
@@ -26,10 +28,11 @@ import {
   IconShieldLock,
   IconSun,
   IconScale,
+  IconUserShare,
   IconUsers,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { RoleBadge } from "../components/badges";
 import { EnvironmentBadge } from "../components/EnvironmentBadge";
@@ -163,10 +166,45 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        {user?.impersonator && <ImpersonationBanner />}
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+function ImpersonationBanner() {
+  const { user, stopImpersonation } = useAuth();
+  const navigate = useNavigate();
+  const [leaving, setLeaving] = useState(false);
+  if (!user?.impersonator) return null;
+  return (
+    <Alert
+      color="orange"
+      variant="filled"
+      mb="md"
+      icon={<IconUserShare size={18} />}
+      title={`Actuando como ${user.name} (${user.email})`}
+    >
+      <Group justify="space-between" wrap="wrap" gap="xs">
+        <Text size="sm">Sesión iniciada por {user.impersonator.name}.</Text>
+        <Button
+          size="xs"
+          variant="white"
+          color="orange"
+          loading={leaving}
+          onClick={() => {
+            setLeaving(true);
+            void stopImpersonation()
+              .then(() => navigate("/usuarios"))
+              .finally(() => setLeaving(false));
+          }}
+        >
+          Volver a mi cuenta
+        </Button>
+      </Group>
+    </Alert>
   );
 }

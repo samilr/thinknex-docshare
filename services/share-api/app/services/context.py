@@ -8,3 +8,5 @@ class RequestContext:
     ip: str | None = None
     user_agent: str | None = None
     request_id: str | None = None
+    # Email del ADMIN que actúa como el usuario autenticado (suplantación), si corresponde.
+    impersonator: str | None = None

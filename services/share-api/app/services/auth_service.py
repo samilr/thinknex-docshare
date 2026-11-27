@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.errors import DomainError, ValidationFailedError
+from app.core.errors import DomainError, ForbiddenError, NotFoundError, ValidationFailedError
 from app.core.security import (
     create_user_token,
     generate_share_token,
@@ -50,6 +50,10 @@ class IssuedSession:
     expires_in: int
     refresh_token: str
     refresh_id: uuid.UUID
+    impersonator: User | None = None
+
+
+IMPERSONATION_MAX_HOURS = 8
 
 
 def validate_password_policy(password: str, *, email: str, min_length: int) -> None:
@@ -83,14 +87,23 @@ class AuthService:
             details=dict(details),
         )
 
-    def _issue(self, user: User, ctx: RequestContext, family_id: uuid.UUID | None) -> IssuedSession:
+    def _issue(
+        self,
+        user: User,
+        ctx: RequestContext,
+        family_id: uuid.UUID | None,
+        impersonator: User | None = None,
+        expires_at: datetime | None = None,
+    ) -> IssuedSession:
         plain = generate_share_token()
         token = RefreshToken(
             id=uuid.uuid4(),
             user_id=user.id,
             token_hash=hash_token(plain),
             family_id=family_id or uuid.uuid4(),
-            expires_at=datetime.now(UTC) + timedelta(days=self.settings.refresh_ttl_days),
+            expires_at=expires_at
+            or datetime.now(UTC) + timedelta(days=self.settings.refresh_ttl_days),
+            impersonator_id=impersonator.id if impersonator else None,
             ip=ctx.ip,
             user_agent=(ctx.user_agent or "")[:512] or None,
         )
@@ -101,8 +114,18 @@ class AuthService:
             list(user.roles),
             self.settings.jwt_secret.get_secret_value(),
             self.settings.jwt_ttl_minutes,
+            impersonator_id=impersonator.id if impersonator else None,
         )
-        return IssuedSession(user, access, self.settings.jwt_ttl_minutes * 60, plain, token.id)
+        return IssuedSession(
+            user, access, self.settings.jwt_ttl_minutes * 60, plain, token.id, impersonator
+        )
+
+    def _current_token(self, refresh_token: str | None) -> RefreshToken | None:
+        if not refresh_token:
+            return None
+        return self.db.scalar(
+            select(RefreshToken).where(RefreshToken.token_hash == hash_token(refresh_token))
+        )
 
     def _revoke_family(self, family_id: uuid.UUID) -> None:
         self.db.execute(
@@ -190,8 +213,20 @@ class AuthService:
             raise SessionExpiredError()
         if token.expires_at <= now or user is None or not user.is_active:
             raise SessionExpiredError()
+        impersonator = self.db.get(User, token.impersonator_id) if token.impersonator_id else None
+        if token.impersonator_id and (
+            impersonator is None or not impersonator.is_active or "ADMIN" not in impersonator.roles
+        ):
+            self._revoke_family(token.family_id)
+            raise SessionExpiredError()
 
-        session = self._issue(user, ctx, family_id=token.family_id)
+        session = self._issue(
+            user,
+            ctx,
+            family_id=token.family_id,
+            impersonator=impersonator,
+            expires_at=token.expires_at if impersonator else None,
+        )
         token.revoked_at = now
         token.replaced_by = session.refresh_id
         return session
@@ -206,6 +241,56 @@ class AuthService:
             return
         self._revoke_family(token.family_id)
         self._audit(AuditEventType.USER_LOGOUT, ctx, self.db.get(User, token.user_id))
+
+    def impersonate(
+        self, admin: User, target_id: uuid.UUID, refresh_token: str | None, ctx: RequestContext
+    ) -> IssuedSession:
+        """El ADMIN pasa a actuar como otro usuario. Su sesión actual se cierra y la nueva sesión
+        recuerda quién está detrás; todo lo que haga queda auditado con ``impersonated_by``."""
+        target = self.db.get(User, target_id)
+        if target is None or not target.is_active:
+            raise NotFoundError("Usuario no encontrado o inactivo")
+        if target.id == admin.id:
+            raise ValidationFailedError("Ya estás usando tu propia cuenta")
+        if "ADMIN" in target.roles:
+            raise ForbiddenError("No es posible actuar como otro administrador")
+        current = self._current_token(refresh_token)
+        if current is not None and current.user_id == admin.id:
+            self._revoke_family(current.family_id)
+        session = self._issue(
+            target,
+            ctx,
+            family_id=None,
+            impersonator=admin,
+            expires_at=datetime.now(UTC) + timedelta(hours=IMPERSONATION_MAX_HOURS),
+        )
+        self._audit(
+            AuditEventType.IMPERSONATION_STARTED,
+            ctx,
+            admin,
+            target_id=str(target.id),
+            target_email=target.email,
+        )
+        return session
+
+    def stop_impersonation(self, refresh_token: str | None, ctx: RequestContext) -> IssuedSession:
+        """Vuelve a la cuenta del ADMIN: cierra la sesión suplantada y abre una propia."""
+        token = self._current_token(refresh_token)
+        if token is None or token.impersonator_id is None or token.revoked_at is not None:
+            raise SessionExpiredError()
+        admin = self.db.get(User, token.impersonator_id)
+        target = self.db.get(User, token.user_id)
+        self._revoke_family(token.family_id)
+        if admin is None or not admin.is_active or "ADMIN" not in admin.roles:
+            raise SessionExpiredError()
+        self._audit(
+            AuditEventType.IMPERSONATION_ENDED,
+            ctx,
+            admin,
+            target_id=str(token.user_id),
+            target_email=target.email if target else None,
+        )
+        return self._issue(admin, ctx, family_id=None)
 
     def change_password(
         self, user: User, current: str, new: str, ctx: RequestContext
