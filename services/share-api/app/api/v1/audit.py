@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import AuditorDep, DbDep
+from app.api.deps import OversightDep, DbDep
 from app.db.models import AuditEvent
 from app.domain.enums import AuditEventType, Channel
 from app.schemas import AuditEventOut, AuditPage, ChainVerificationOut
@@ -24,7 +24,7 @@ def events_out(db: Session, rows: list[AuditEvent]) -> list[AuditEventOut]:
 
 @router.get("", response_model=AuditPage, response_model_by_alias=True)
 def list_events(
-    _: AuditorDep,
+    _: OversightDep,
     db: DbDep,
     document_id: Annotated[str | None, Query(description="ID del DMS, p. ej. doc-002")] = None,
     share_id: uuid.UUID | None = None,
@@ -60,7 +60,7 @@ def list_events(
 
 
 @router.get("/verify", response_model=ChainVerificationOut)
-def verify_chain(_: AuditorDep, db: DbDep) -> ChainVerificationOut:
+def verify_chain(_: OversightDep, db: DbDep) -> ChainVerificationOut:
     """Recalcula la cadena de hashes completa y reporta el primer eslabón alterado, si existe."""
     result = audit_service.verify_chain(db)
     return ChainVerificationOut(**result.__dict__)

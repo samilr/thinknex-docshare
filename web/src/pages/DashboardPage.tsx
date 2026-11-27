@@ -21,6 +21,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
+import { Link, useNavigate } from "react-router";
 import { api, unwrap } from "../api/client";
 import { useAuth } from "../auth/context";
 import { PageHeader } from "../components/PageHeader";
@@ -33,15 +34,25 @@ function Kpi({
   icon: Icon,
   color,
   hint,
+  to,
 }: {
   label: string;
   value: number | string;
   icon: ComponentType<{ size?: number }>;
   color: string;
   hint?: string;
+  to: string;
 }) {
   return (
-    <Card withBorder radius="lg" padding="lg">
+    <Card
+      withBorder
+      radius="lg"
+      padding="lg"
+      component={Link}
+      to={to}
+      aria-label={`${label}: ${value}`}
+      className="clickable-card"
+    >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={2} style={{ minWidth: 0 }}>
           <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -65,7 +76,11 @@ function Kpi({
 }
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
+  const oversight = hasRole("ADMIN", "AUDITOR");
+  const auditOr = (evento: string, fallback = "/envios") =>
+    oversight ? `/auditoria?evento=${evento}` : fallback;
   const stats = useQuery({
     queryKey: ["stats"],
     queryFn: async () => unwrap(await api.GET("/api/v1/stats")),
@@ -92,14 +107,22 @@ export function DashboardPage() {
             icon={IconSend}
             color="blue"
             hint={`${active} activos`}
+            to="/envios"
           />
-          <Kpi label="Descargas (7 días)" value={accesses} icon={IconDownload} color="green" />
+          <Kpi
+            label="Descargas (7 días)"
+            value={accesses}
+            icon={IconDownload}
+            color="green"
+            to={auditOr("DOCUMENT_ACCESSED")}
+          />
           <Kpi
             label="Con datos sensibles"
             value={data?.sensitive_acknowledged ?? 0}
             icon={IconAlertTriangle}
             color="yellow"
             hint="confirmados al compartir"
+            to={auditOr("SENSITIVITY_CHECKED")}
           />
           <Kpi
             label="Bloqueos y denegaciones"
@@ -107,6 +130,7 @@ export function DashboardPage() {
             icon={IconShieldX}
             color="red"
             hint="últimos 30 días"
+            to={auditOr("SHARE_BLOCKED", "/envios?estado=LOCKED")}
           />
           {data?.users_active != null && (
             <Kpi
@@ -114,6 +138,7 @@ export function DashboardPage() {
               value={data.users_active}
               icon={IconUsers}
               color="grape"
+              to="/usuarios"
             />
           )}
         </SimpleGrid>
@@ -126,6 +151,8 @@ export function DashboardPage() {
           </Title>
           <BarChart
             h={240}
+            barProps={{ cursor: "pointer" }}
+            onClick={() => navigate(auditOr("DOCUMENT_ACCESSED"))}
             data={(data?.accesses_by_day ?? []).map((d) => ({
               day: formatDay(d.day),
               Descargas: d.count,
@@ -144,9 +171,15 @@ export function DashboardPage() {
             <Stack align="center">
               <DonutChart
                 size={170}
+                pieProps={{
+                  cursor: "pointer",
+                  onClick: (entry: { payload?: { channel?: string } }) =>
+                    entry.payload?.channel && navigate(`/envios?canal=${entry.payload.channel}`),
+                }}
                 thickness={26}
                 withLabelsLine={false}
                 data={Object.entries(data.shares_by_channel).map(([channel, value]) => ({
+                  channel,
                   name: labelOf(CHANNEL, channel).label,
                   value,
                   color: `${labelOf(CHANNEL, channel).color}.6`,
@@ -154,7 +187,14 @@ export function DashboardPage() {
               />
               <Group gap="xs">
                 {Object.entries(data.shares_by_status).map(([status, count]) => (
-                  <Badge key={status} color={labelOf(SHARE_STATUS, status).color} variant="light">
+                  <Badge
+                    key={status}
+                    color={labelOf(SHARE_STATUS, status).color}
+                    variant="light"
+                    component={Link}
+                    to={`/envios?estado=${status}`}
+                    style={{ cursor: "pointer" }}
+                  >
                     {labelOf(SHARE_STATUS, status).label}: {count}
                   </Badge>
                 ))}
@@ -176,7 +216,11 @@ export function DashboardPage() {
           <Table>
             <Table.Tbody>
               {data.top_documents.map((doc) => (
-                <Table.Tr key={doc.source_id}>
+                <Table.Tr
+                  key={doc.source_id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/envios?documento=${doc.source_id}`)}
+                >
                   <Table.Td w={90}>
                     <Text size="sm" c="dimmed" ff="monospace">
                       {doc.source_id}

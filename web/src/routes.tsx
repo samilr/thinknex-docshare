@@ -62,7 +62,7 @@ export const routes: RouteObject[] = [
       {
         path: "auditoria",
         element: (
-          <RequireRoles roles={["AUDITOR"]}>
+          <RequireRoles roles={["AUDITOR", "ADMIN"]}>
             <AuditPage />
           </RequireRoles>
         ),

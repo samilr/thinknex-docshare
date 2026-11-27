@@ -18,6 +18,7 @@ import { notifications } from "@mantine/notifications";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { IconDownload, IconShieldCheck, IconShieldX } from "@tabler/icons-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { api, type Schemas, unwrap } from "../api/client";
 import type { paths } from "../api/schema";
 import { ChannelLabel } from "../components/badges";
@@ -61,9 +62,10 @@ function IntegrityBanner() {
 }
 
 export function AuditPage() {
-  const [documentFilter, setDocumentFilter] = useState("");
+  const [params] = useSearchParams();
+  const [documentFilter, setDocumentFilter] = useState(params.get("documento") ?? "");
   const [documentId] = useDebouncedValue(documentFilter.trim(), 300);
-  const [eventType, setEventType] = useState<string | null>(null);
+  const [eventType, setEventType] = useState<string | null>(params.get("evento"));
   const [channel, setChannel] = useState<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");

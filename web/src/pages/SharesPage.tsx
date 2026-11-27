@@ -13,6 +13,7 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { api, unwrap } from "../api/client";
 import { useAuth } from "../auth/context";
 import { ChannelLabel, StatusBadge } from "../components/badges";
@@ -29,10 +30,17 @@ type ChannelValue = "EMAIL" | "WHATSAPP" | "SMS";
 export function SharesPage() {
   const { hasRole } = useAuth();
   const oversight = hasRole("ADMIN", "AUDITOR");
-  const [scope, setScope] = useState<Scope>(oversight && !hasRole("SHARER") ? "all" : "mine");
-  const [status, setStatus] = useState<StatusValue | null>(null);
-  const [channel, setChannel] = useState<ChannelValue | null>(null);
-  const [documentFilter, setDocumentFilter] = useState("");
+  const [params] = useSearchParams();
+  const [scope, setScope] = useState<Scope>(
+    oversight && (params.get("alcance") === "all" || !hasRole("SHARER")) ? "all" : "mine",
+  );
+  const [status, setStatus] = useState<StatusValue | null>(
+    params.get("estado") as StatusValue | null,
+  );
+  const [channel, setChannel] = useState<ChannelValue | null>(
+    params.get("canal") as ChannelValue | null,
+  );
+  const [documentFilter, setDocumentFilter] = useState(params.get("documento") ?? "");
   const [documentId] = useDebouncedValue(documentFilter.trim(), 300);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);

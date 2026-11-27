@@ -233,3 +233,10 @@ def test_admin_can_relax_anyone_link_rule(api: Api) -> None:
         assert created.status_code == 201, created.text
     finally:
         api.client.put(url, json=_body(rule), headers=admin)
+
+
+def test_admin_sees_audit_log(api: Api) -> None:
+    admin = api.admin_headers()
+    blocked = api.client.get("/api/v1/audit", params={"event_type": "SHARE_BLOCKED"}, headers=admin)
+    assert blocked.status_code == 200
+    assert api.client.get("/api/v1/audit/verify", headers=admin).json()["valid"] is True
