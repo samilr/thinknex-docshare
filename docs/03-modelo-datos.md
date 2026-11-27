@@ -64,8 +64,10 @@ erDiagram
         uuid id PK
         uuid document_id FK
         uuid shared_by FK
-        uuid recipient_id FK
-        string channel "EMAIL | WHATSAPP | SMS"
+        uuid recipient_id FK "nulo si audience = ANYONE"
+        string channel "LINK | EMAIL | WHATSAPP | SMS"
+        string audience "SPECIFIC | ANYONE"
+        string permission "VIEW | DOWNLOAD | EDIT"
         text reason
         string token_hash UK "sha256 del token"
         string status "ACTIVE | REVOKED | EXPIRED | LOCKED | EXHAUSTED"
@@ -114,8 +116,15 @@ erDiagram
 **`shares`: el corazón del modelo.** Cada fila responde a la pregunta del negocio:
 **quién** (`shared_by`), **qué** (`document_id`, que es un snapshot con hash), **a quién**
 (`recipient_id`), **cuándo** (`created_at`), **por qué medio** (`channel`) y **para qué** (`reason`).
-Las restricciones `CHECK` garantizan valores válidos de `channel` y `status`, y que
-`0 ≤ access_count ≤ max_accesses`.
+Las restricciones `CHECK` garantizan valores válidos de `channel`, `status`, `audience` y
+`permission`, y que `0 ≤ access_count ≤ max_accesses`. Además (migración `0004`, ADR-0010):
+- `audience = 'ANYONE'` exige `channel = 'LINK'`;
+- `audience = 'SPECIFIC'` exige `recipient_id`.
+
+`access_count` cuenta **sesiones de acceso** (cada verificación con código o apertura de un enlace
+para cualquiera), no descargas. Los envíos anteriores a `0004` quedaron como `DOWNLOAD` y
+`SPECIFIC`. Para "cualquiera con el enlace" el "a quién" es el propio enlace: la auditoría registra
+cada apertura (`ACCESS_GRANTED`) con IP y user agent.
 
 **`documents`: snapshot, no espejo del DMS.** Una fila por `(source_id, sha256)`: si el documento
 cambia en el DMS, el próximo share crea un snapshot nuevo y los anteriores siguen apuntando a lo que
@@ -159,7 +168,11 @@ retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
 | `NOTIFICATION_SENT` / `NOTIFICATION_FAILED` | SYSTEM | Envío del enlace por el canal |
 | `LINK_OPENED` | RECIPIENT | Apertura de la página |
 | `OTP_SENT` / `OTP_VERIFIED` / `OTP_FAILED` | RECIPIENT | Verificación de identidad |
-| `DOCUMENT_ACCESSED` | RECIPIENT | Descarga (número de acceso y marca de agua) |
+| `ACCESS_GRANTED` | RECIPIENT | Apertura de un enlace para cualquiera (sin código) |
+| `DOCUMENT_VIEWED` | RECIPIENT | El destinatario abre el visor (versión, permiso, si es el archivo vivo) |
+| `DOCUMENT_ACCESSED` | RECIPIENT | Descarga (versión, marca de agua, sha256) |
+| `DOCUMENT_VERSION_UPLOADED` | RECIPIENT | Nueva versión publicada con permiso de edición |
+| `SHARE_LINK_ROTATED` | USER | Se generó un enlace nuevo; el anterior dejó de funcionar |
 | `ACCESS_DENIED` | RECIPIENT | Cualquier denegación, con la causa real |
 | `SHARE_REVOKED` | USER | Revocación |
 | `SHARE_EXPIRED` / `SHARE_LOCKED` | SYSTEM | Vencimiento o bloqueo por intentos |

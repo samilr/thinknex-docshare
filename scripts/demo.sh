@@ -27,6 +27,8 @@ api() { # api METHOD PATH TOKEN [JSON] -> imprime body; el HTTP status queda en 
 http_status() { cat out/.status; }
 inbox()      { curl -sf "$BASE/api/v1/admin/inbox?limit=20" -H "Authorization: Bearer $ADMIN"; }
 last_link()  { inbox | jq -r '[.items[] | select(.kind=="LINK")][0].body' | grep -oE 'https?://[^ ]+/s/[A-Za-z0-9_-]+'; }
+# El enlace es del portal (/s/{token}); la API pública del destinatario es /api/v1/access/{token}.
+access_of()  { echo "$BASE/api/v1/access/${1##*/s/}"; }
 last_otp()   { inbox | jq -r '[.items[] | select(.kind=="OTP")][0].body' | grep -oE '[0-9]{6}' | head -1; }
 
 bold "Demo · Compartición segura de documentos"
@@ -44,15 +46,27 @@ echo "$SHARE" | jq '{id, status, channel, expires_at, max_accesses, sensitivity_
 SHARE_ID=$(echo "$SHARE" | jq -r .id)
 info "La respuesta NO incluye el enlace: solo lo recibe el destinatario → ver http://localhost:8025"
 
-step "3. El destinatario abre el enlace, pide un OTP y descarga"
-LINK=$(last_link)
-info "Enlace recibido: ${LINK%/*}/<token>"
-info "Página del destinatario: HTTP $(curl -s -o /dev/null -w '%{http_code}' "$LINK")"
+step "3. El destinatario abre el enlace, pide un OTP, ve el documento y lo descarga"
+LINK=$(access_of "$(last_link)")
+info "Enlace recibido: ${BASE}/s/<token> (visor de ThinkNex Docs)"
+curl -sf "$LINK" | jq -c '{shared_by, permission, requires_code, destination, document_title}'
 curl -sf -X POST "$LINK/otp" | jq -c .
 OTP=$(last_otp); info "OTP recibido por el canal: $OTP"
 ACCESS=$(curl -sf -X POST "$LINK/verify" -H 'Content-Type: application/json' -d "{\"code\":\"$OTP\"}" | jq -r .access_token)
+curl -sf "$LINK/document" -H "Authorization: Bearer $ACCESS" | jq -c '{title, version, page_count, can_download, can_edit}'
 curl -sf "$LINK/download" -H "Authorization: Bearer $ACCESS" -o out/doc-003-compartido.pdf
 ok "Descargado con marca de agua → out/doc-003-compartido.pdf ($(wc -c < out/doc-003-compartido.pdf | tr -d ' ') bytes)"
+
+step "3b. Enlace de ThinkNex Docs para cualquiera, solo lectura (doc-004, PUBLIC)"
+VIEW_SHARE=$(api POST /api/v1/shares "$ANA" '{"document_id":"doc-004","channel":"LINK","audience":"ANYONE","permission":"VIEW","reason":"Catálogo para prospectos"}')
+echo "$VIEW_SHARE" | jq -c '{id, channel, audience, permission, notification_status}'
+VIEW=$(access_of "$(echo "$VIEW_SHARE" | jq -r .link)")
+info "El enlace se entrega una sola vez a Ana para que lo envíe por el medio que prefiera"
+VACCESS=$(curl -sf -X POST "$VIEW/open" | jq -r .access_token)
+curl -sf "$VIEW/pages/1" -H "Authorization: Bearer $VACCESS" -o out/doc-004-pagina-1.png
+ok "Página 1 como imagen con marca de agua → out/doc-004-pagina-1.png"
+info "Descarga del archivo con permiso Ver: HTTP $(curl -s -o /dev/null -w '%{http_code}' "$VIEW/download" -H "Authorization: Bearer $VACCESS")"
+info "Mismo enlace para doc-006 (con datos personales): HTTP $(api POST /api/v1/shares "$ANA" '{"document_id":"doc-006","channel":"LINK","audience":"ANYONE","permission":"VIEW","reason":"intento","acknowledge_sensitive":true}' >/dev/null; http_status) (bloqueado)"
 
 step "4. Documento con datos personales (doc-006) por WHATSAPP → requiere confirmación"
 api POST /api/v1/shares "$ANA" '{"document_id":"doc-006","recipient":{"name":"María González","phone":"+56 9 8765 4321"},"channel":"WHATSAPP","reason":"Certificado solicitado por la clienta"}' \
@@ -71,7 +85,7 @@ info "Enlace tras revocar: HTTP $(curl -s -o /dev/null -w '%{http_code}' -X POST
 
 step "7. Fuerza bruta de OTP: 5 intentos fallidos bloquean el enlace (doc-004 por SMS)"
 api POST /api/v1/shares "$ANA" '{"document_id":"doc-004","recipient":{"name":"Cliente","phone":"+56 9 2222 3333"},"channel":"SMS","reason":"Catálogo comercial"}' >/dev/null
-LINK2=$(last_link); curl -sf -X POST "$LINK2/otp" >/dev/null
+LINK2=$(access_of "$(last_link)"); curl -sf -X POST "$LINK2/otp" >/dev/null
 for i in 1 2 3 4 5; do
   code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$LINK2/verify" -H 'Content-Type: application/json' -d '{"code":"000000"}')
   info "intento $i → HTTP $code"

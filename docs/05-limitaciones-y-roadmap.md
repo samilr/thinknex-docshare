@@ -8,7 +8,11 @@
 | WhatsApp y SMS simulados | No hay entrega real | Adaptadores para WhatsApp Business Cloud API (plantillas aprobadas) y un proveedor SMS, con la misma interfaz `ChannelAdapter` |
 | El OTP llega por el mismo canal que el enlace | Si el canal está comprometido, ambos lo están | OTP por un segundo canal (email + SMS) o identidad federada para destinatarios recurrentes |
 | Envío de la notificación síncrono en la request | Si el proveedor tarda, la request tarda | Outbox transaccional y worker (la tabla `notifications` ya existe) con reintentos y reenvío |
-| Marca de agua solo en PDF | Otros formatos se entregan sin marca (queda auditado `watermarked: false`) | Conversión a PDF o visor en línea |
+| Marca de agua de la descarga solo en PDF | Otros formatos se descargan sin marca (queda auditado `watermarked: false`); en el visor, PDF e imágenes siempre llevan marca | Conversión a PDF al compartir |
+| Visor protegido solo para PDF, imágenes y texto | Word y Excel se muestran como "vista previa no disponible" (con *Solo ver* no hay forma de abrirlos) | Conversión a PDF en el servidor (LibreOffice headless en un job) antes de renderizar |
+| La vista protegida no evita capturas de pantalla | Ningún visor web puede impedirlo | La marca de agua con identidad, fecha y referencia deja trazabilidad visible en cada página (ADR-0010) |
+| "Cualquiera con el enlace" no identifica a la persona | La auditoría registra IP y user agent, no una identidad | Limitado por política a documentos sin datos sensibles; para lo demás, persona específica |
+| Edición por destinatario = subir una versión completa | No hay coedición en línea | Integración con un editor (Office Online / WOPI) sobre el archivo vivo |
 | Bandeja simulada guarda enlaces y OTP en claro | Solo aceptable en la demo | `SIMULATED_INBOX_ENABLED=false` en producción; tiene TTL de 7 días y solo la ve un ADMIN |
 | Cadena de auditoría serializada con advisory lock | Limita la escritura concurrente de eventos (suficiente para cientos o miles al día) | Cadenas por partición (por día o por tenant) o anclaje periódico del hash en un almacenamiento WORM |
 | Sin rate limiting por IP | Mitigado por los límites por share y el bloqueo de cuentas | Cloud Armor o un WAF delante de Cloud Run |
