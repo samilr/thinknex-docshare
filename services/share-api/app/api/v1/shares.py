@@ -103,6 +103,14 @@ def update_share(
     return service.update(user, share_id, body, ctx)
 
 
+@router.get("/{share_id}/link", response_model=ShareOut)
+def reveal_link(
+    share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep
+) -> ShareOut:
+    """Vuelve a mostrar el enlace del envío (dueño o ADMIN). Cada consulta queda auditada."""
+    return service.reveal_link(user, share_id, ctx)
+
+
 @router.post("/{share_id}/link", response_model=ShareOut)
 def rotate_link(
     share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep

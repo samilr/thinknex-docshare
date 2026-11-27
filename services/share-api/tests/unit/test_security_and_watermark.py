@@ -83,3 +83,18 @@ def test_audit_hash_changes_with_any_field() -> None:
     event.channel = "WHATSAPP"
     assert compute_hash(GENESIS_HASH, event) != original
     assert compute_hash("f" * 64, event) != compute_hash(GENESIS_HASH, event)
+
+
+def test_link_token_encryption_roundtrip() -> None:
+    import pytest
+    from cryptography.exceptions import InvalidTag
+
+    from app.core.security import decrypt_link_token, encrypt_link_token
+
+    secret = "x" * 40
+    sealed = encrypt_link_token("tok_abc123", secret)
+    assert "tok_abc123" not in sealed
+    assert sealed != encrypt_link_token("tok_abc123", secret), "nonce aleatorio"
+    assert decrypt_link_token(sealed, secret) == "tok_abc123"
+    with pytest.raises(InvalidTag):
+        decrypt_link_token(sealed, "y" * 40)

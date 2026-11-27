@@ -22,7 +22,14 @@ from app.core.errors import (
     UpstreamError,
     ValidationFailedError,
 )
-from app.core.security import generate_share_token, hash_token, mask_email, mask_phone
+from app.core.security import (
+    decrypt_link_token,
+    encrypt_link_token,
+    generate_share_token,
+    hash_token,
+    mask_email,
+    mask_phone,
+)
 from app.db.models import AuditEvent, Document, Recipient, Share, User
 from app.domain.enums import (
     ActorType,
@@ -235,6 +242,7 @@ class ShareService:
             audience=req.audience.value,
             reason=req.reason,
             token_hash=hash_token(token),
+            token_encrypted=encrypt_link_token(token, self.settings.jwt_secret.get_secret_value()),
             status=ShareStatus.ACTIVE.value,
             expires_at=datetime.now(UTC) + timedelta(hours=expires_in),
             max_accesses=max_accesses,
@@ -384,6 +392,34 @@ class ShareService:
         self.db.flush()
         return to_share_out(share)
 
+    def reveal_link(self, user: User, share_id: uuid.UUID, ctx: RequestContext) -> ShareOut:
+        """Vuelve a mostrar el enlace a quien compartió (o a un ADMIN). Queda auditado."""
+        share = self._visible(user, share_id)
+        if share.shared_by != user.id and not user.has_any(Role.ADMIN):
+            raise ForbiddenError("Solo quien compartió o un ADMIN puede ver el enlace")
+        if share.status not in (ShareStatus.ACTIVE.value, ShareStatus.EXHAUSTED.value) or (
+            share.expires_at <= datetime.now(UTC)
+        ):
+            raise ConflictError("El envío ya no está vigente")
+        if share.token_encrypted is None:
+            raise ConflictError(
+                "Este envío es anterior a los enlaces recuperables: genere un enlace nuevo"
+            )
+        token = decrypt_link_token(
+            share.token_encrypted, self.settings.jwt_secret.get_secret_value()
+        )
+        audit_service.record(
+            self.db,
+            event_type=AuditEventType.SHARE_LINK_VIEWED,
+            actor_type=ActorType.USER,
+            actor_id=user.id,
+            share_id=share.id,
+            document_id=share.document_id,
+            channel=share.channel,
+            ctx=ctx,
+        )
+        return to_share_out(share, link=f"{self.settings.public_base_url}/s/{token}")
+
     def rotate_link(self, user: User, share_id: uuid.UUID, ctx: RequestContext) -> ShareOut:
         """Genera un enlace nuevo para un envío LINK; el anterior deja de funcionar."""
         share = self._visible(user, share_id)
@@ -395,6 +431,9 @@ class ShareService:
             raise ConflictError("El envío no está activo")
         token = generate_share_token()
         share.token_hash = hash_token(token)
+        share.token_encrypted = encrypt_link_token(
+            token, self.settings.jwt_secret.get_secret_value()
+        )
         audit_service.record(
             self.db,
             event_type=AuditEventType.SHARE_LINK_ROTATED,

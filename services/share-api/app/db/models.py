@@ -124,6 +124,8 @@ class Share(Base):
     recipient_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("recipients.id"))
     channel: Mapped[str] = mapped_column(String(16))
     permission: Mapped[str] = mapped_column(String(8), default="DOWNLOAD")
+    # Token cifrado (AES-GCM) para volver a mostrar el enlace a quien compartió.
+    token_encrypted: Mapped[str | None] = mapped_column(Text)
     # Marca de agua con la identidad del destinatario en el visor y en la descarga.
     watermark: Mapped[bool] = mapped_column(default=True)
     audience: Mapped[str] = mapped_column(String(8), default="SPECIFIC")

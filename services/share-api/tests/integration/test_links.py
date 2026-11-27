@@ -281,3 +281,27 @@ def test_share_without_watermark(api: Api) -> None:
     assert r.json()["watermark"] is True
     pdf = api.client.get(f"{ACCESS}/{token}/download", headers=auth)
     assert "Compartido con" in PdfReader(io.BytesIO(pdf.content)).pages[0].extract_text()
+
+
+def test_owner_can_see_link_again(api: Api) -> None:
+    link_share = _anyone_view(api)
+    ana = api.headers("ana@thinknex.example")
+    url = f"/api/v1/shares/{link_share['id']}/link"
+    r = api.client.get(url, headers=ana)
+    assert r.status_code == 200 and r.json()["link"] == link_share["link"]
+    assert api.client.get(url, headers=api.admin_headers()).json()["link"] == link_share["link"]
+    assert api.client.get(url, headers=api.headers("bruno@thinknex.example")).status_code == 404
+    assert api.client.get(url, headers=api.headers("carla@thinknex.example")).status_code == 403
+    viewed = api.audit(share_id=str(link_share["id"]), event_type="SHARE_LINK_VIEWED")
+    assert len(viewed) == 2
+
+    email_share = api.share()
+    token = api.last_link_token()
+    r = api.client.get(f"/api/v1/shares/{email_share['id']}/link", headers=ana)
+    assert r.json()["link"].endswith(f"/s/{token}")
+
+    # Tras regenerar, se muestra el enlace nuevo; tras revocar, ya no.
+    rotated = api.client.post(url, headers=ana).json()["link"]
+    assert api.client.get(url, headers=ana).json()["link"] == rotated
+    api.client.post(f"/api/v1/shares/{link_share['id']}/revoke", headers=ana)
+    assert api.client.get(url, headers=ana).status_code == 409

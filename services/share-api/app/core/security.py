@@ -105,6 +105,37 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _link_key(secret: str) -> bytes:
+    """Clave AES-256 para cifrar enlaces, derivada del secreto con separación de dominio."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+    return HKDF(
+        algorithm=hashes.SHA256(), length=32, salt=None, info=b"thinknex-docs/share-link/v1"
+    ).derive(secret.encode())
+
+
+def encrypt_link_token(token: str, secret: str) -> str:
+    """Cifra el token del enlace (AES-GCM) para poder mostrarlo de nuevo a quien compartió.
+    La BD guarda nonce+cifrado; la clave nunca se almacena junto a los datos."""
+    import base64
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    nonce = secrets.token_bytes(12)
+    sealed = AESGCM(_link_key(secret)).encrypt(nonce, token.encode(), b"share-link")
+    return base64.urlsafe_b64encode(nonce + sealed).decode()
+
+
+def decrypt_link_token(value: str, secret: str) -> str:
+    import base64
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    raw = base64.urlsafe_b64decode(value.encode())
+    return AESGCM(_link_key(secret)).decrypt(raw[:12], raw[12:], b"share-link").decode()
+
+
 def generate_otp() -> str:
     return f"{secrets.randbelow(10**6):06d}"
 

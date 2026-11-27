@@ -123,7 +123,7 @@ class ShareOut(BaseModel):
     watermark: bool = True
     link: str | None = Field(
         default=None,
-        description="Solo al crear (canal LINK) o al regenerarlo: no se puede recuperar después",
+        description="Al crear (canal LINK), al regenerarlo o al consultarlo con GET /link",
     )
     reason: str
     status: ShareStatus
