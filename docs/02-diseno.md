@@ -232,3 +232,79 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
   Detalle en [08-ia.md](08-ia.md#86-seguridad-privacidad-y-gobierno).
 - **Transacciones:** la sesión de BD confirma antes de enviar la respuesta (`scope="function"`). Un
   cliente nunca lee un estado sin confirmar, ni recibe un 2xx de algo que falló al confirmarse.
+
+## 2.8 Seguridad de la API: autenticación y autorización
+
+La API tiene tres tipos de cliente, y cada uno usa una credencial distinta. Un token de un tipo no
+sirve en otro: el claim `typ` se valida siempre.
+
+| Cliente | Credencial | Duración | Endpoints |
+|---|---|---|---|
+| **Usuario interno** (portal o Swagger) | JWT de acceso `Authorization: Bearer`, `typ=user` | 15 min, solo en memoria | `/api/v1/*` |
+| | Refresh token opaco, rotativo, en cookie `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` | 7 días | `/api/v1/auth/refresh` |
+| **Destinatario externo** | Token del enlace (256 bits, en BD solo su `sha256`) + código OTP | OTP de 10 min | `/api/v1/access/{token}` |
+| | JWT de sesión del visor, `typ=access`, `sub` = id del envío | 30 min | Solo el documento de ese envío |
+| **Servicio a servicio** (share-api → document-api) | Header `X-API-Key` y, en GCP, ID token de Cloud Run (IAM `run.invoker` solo para la cuenta de share-api) | — | document-api completo |
+
+### Autenticación de usuarios (JWT)
+
+- **Login:** `POST /api/v1/auth/login`.
+  - Contraseñas con **argon2id**.
+  - Bloqueo de 15 minutos tras 5 intentos fallidos.
+  - Si el usuario no existe, se calcula igual un hash, para no revelar qué cuentas existen.
+- **Access token:** JWT firmado con **HS256** y `JWT_SECRET` (mínimo 32 caracteres, en Secret
+  Manager). Claims: `sub`, `roles`, `typ`, `iat`, `exp` y `jti`. Al decodificar se exigen `exp`,
+  `sub` y `typ`.
+- **Refresh rotativo:** cada uso emite un refresh nuevo. Si llega uno ya usado, se revoca toda la
+  sesión y se audita `TOKEN_REUSE_DETECTED`. `refresh` y `logout` exigen el header
+  `X-Requested-With: fetch`, como defensa adicional contra CSRF.
+- **Roles leídos de la BD en cada request:** desactivar a un usuario o quitarle un rol corta su
+  acceso de inmediato, aunque su JWT siga vigente.
+- **Actuar como otro usuario:** el JWT lleva el claim `act` (RFC 8693) con el administrador real.
+  La auditoría registra ambos (ADR-0012).
+- **Swagger:** el botón *Authorize* usa el flujo OAuth2 password contra `POST /api/v1/auth/token`,
+  así que se pueden probar los endpoints protegidos desde `/docs`.
+
+### Autorización por roles (RBAC)
+
+Cada endpoint declara los roles que acepta con una dependencia de FastAPI (`require_roles`, en
+[`app/api/deps.py`](../services/share-api/app/api/deps.py)). La autorización se decide siempre en el
+servidor; el portal solo oculta lo que no corresponde.
+
+| Recurso | SHARER | AUDITOR | ADMIN |
+|---|---|---|---|
+| `auth/login`, `auth/token`, `auth/refresh` | público | público | público |
+| `auth/me`, `auth/change-password` | sí | sí | sí |
+| `auth/impersonate` | — | — | sí |
+| `documents`, `library` (explorar, subir, versiones, renombrar) | sí | — | sí |
+| `shares`: crear, precheck | sí | — | sí |
+| `shares`: listar y ver | los propios | todos | todos |
+| `shares`: revocar, editar acceso, ver enlace | los propios | — | todos |
+| `audit` (consulta, verificación, CSV) | — | sí | sí |
+| `policies`: leer | — | sí | sí |
+| `policies`: crear, editar, desactivar, eliminar | — | — | sí |
+| `admin/users`, bandeja simulada, retención | — | — | sí |
+| `stats` (resumen) | propios | globales | globales |
+| `ai/search`, `ai/ask` | sí | — | sí |
+| `ai/chat` (asistente) | sí | solo herramientas de auditoría | sí |
+
+- **Propiedad:** además del rol, los servicios comprueban que el envío pertenezca al usuario
+  (`shared_by`). Un SHARER no puede ver ni revocar envíos ajenos, aunque adivine el id.
+- **Respuestas:** sin token o con token inválido, `401`. Con un rol insuficiente, `403`.
+- **IA:** las herramientas del asistente se filtran por rol, y la búsqueda aplica los permisos en
+  el SQL, de modo que el modelo nunca recibe fragmentos que el usuario no puede abrir (ADR-0014).
+
+### Acceso del destinatario
+
+- El token del enlace (`secrets.token_urlsafe(32)`) solo lo recibe el destinatario. Quien comparte
+  no lo ve, salvo los enlaces recuperables, que se cifran con **AES-GCM** y una clave derivada con
+  HKDF.
+- Si el envío es para una persona específica, se exige un **OTP** de 6 dígitos enviado a su propio
+  contacto. Se guarda como HMAC ligado al envío. Tras 5 intentos fallidos, el enlace queda `LOCKED`.
+- La sesión del visor es un JWT `typ=access` ligado a un solo envío: no sirve para la API interna
+  ni para otro documento. Cada descarga consume un acceso con un `UPDATE` atómico.
+
+### Endpoints públicos
+
+`/health`, `/ready`, `/docs`, `/redoc` y `/openapi.json` no requieren autenticación. No exponen
+datos: solo el estado del servicio y la definición de la API.
