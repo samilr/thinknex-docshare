@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const theme = createTheme({
   primaryColor: "blue",
+  cursorType: "pointer",
   defaultRadius: "md",
   fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
   headings: { fontWeight: "700" },

@@ -20,3 +20,43 @@
   box-shadow: var(--mantine-shadow-sm);
   transform: translateY(-1px);
 }
+
+@media (min-width: 48em) {
+  .nav-compact {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .nav-compact .mantine-NavLink-section {
+    margin-inline-end: 0;
+  }
+
+  .nav-compact .mantine-NavLink-body,
+  .nav-compact-hide {
+    display: none;
+  }
+}
+
+:where(
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="tab"],
+  [role="option"]:not([data-combobox-disabled]),
+  [role="switch"],
+  label[for],
+  summary,
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  .mantine-SegmentedControl-label,
+  .mantine-Dropzone-root,
+  tr[style*="cursor"]
+) {
+  cursor: pointer;
+}
+
+:where(button:disabled, [aria-disabled="true"], [data-disabled]) {
+  cursor: not-allowed;
+}

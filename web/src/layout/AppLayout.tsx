@@ -14,12 +14,14 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useLocalStorage } from "@mantine/hooks";
 import {
   IconChartBar,
   IconFiles,
   IconInbox,
   IconKey,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconLogout,
   IconMoon,
   IconSend,
@@ -80,11 +82,19 @@ export function AppLayout() {
   const navigate = useNavigate();
   const items = NAV_ITEMS.filter((item) => !item.roles || hasRole(...item.roles));
   const impersonating = !!user?.impersonator;
+  const [compact, setCompact] = useLocalStorage({
+    key: "thinknex-sidebar-compact",
+    defaultValue: false,
+  });
 
   return (
     <AppShell
       header={{ height: 60 + (impersonating ? IMPERSONATION_BAR : 0) }}
-      navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !opened } }}
+      navbar={{
+        width: { base: 250, sm: compact ? 68 : 250 },
+        breakpoint: "sm",
+        collapsed: { mobile: !opened },
+      }}
       padding="lg"
     >
       <AppShell.Header>
@@ -92,6 +102,23 @@ export function AppLayout() {
         <Group h={60} px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menú" />
+            <Tooltip label={compact ? "Expandir menú" : "Contraer menú"}>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="lg"
+                visibleFrom="sm"
+                aria-label={compact ? "Expandir menú" : "Contraer menú"}
+                aria-expanded={!compact}
+                onClick={() => setCompact((c) => !c)}
+              >
+                {compact ? (
+                  <IconLayoutSidebarLeftExpand size={20} stroke={1.6} />
+                ) : (
+                  <IconLayoutSidebarLeftCollapse size={20} stroke={1.6} />
+                )}
+              </ActionIcon>
+            </Tooltip>
             <IconShieldLock size={26} color="var(--mantine-primary-color-filled)" />
             <Text fw={700} size="lg">
               ThinkNex Docs
@@ -145,22 +172,33 @@ export function AppLayout() {
 
       <AppShell.Navbar p="sm">
         <AppShell.Section grow component={ScrollArea}>
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              component={Link}
-              to={item.to}
-              label={item.label}
-              leftSection={<item.icon size={18} stroke={1.6} />}
-              active={
-                item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to)
-              }
-              onClick={close}
-              style={{ borderRadius: 8 }}
-            />
-          ))}
+          {items.map((item) => {
+            const active =
+              item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+            return (
+              <Tooltip
+                key={item.to}
+                label={item.label}
+                position="right"
+                disabled={!compact}
+                withArrow
+              >
+                <NavLink
+                  component={Link}
+                  to={item.to}
+                  label={item.label}
+                  aria-label={item.label}
+                  leftSection={<item.icon size={18} stroke={1.6} />}
+                  active={active}
+                  onClick={close}
+                  className={compact ? "nav-compact" : undefined}
+                  style={{ borderRadius: 8 }}
+                />
+              </Tooltip>
+            );
+          })}
         </AppShell.Section>
-        <AppShell.Section>
+        <AppShell.Section className={compact ? "nav-compact-hide" : undefined}>
           <Text size="xs" c="dimmed" px="sm">
             ThinkNex Docs · prototipo de prueba técnica con datos ficticios.
           </Text>
