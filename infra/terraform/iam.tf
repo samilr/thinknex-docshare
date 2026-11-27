@@ -28,7 +28,7 @@ resource "google_project_iam_member" "share_api_sql" {
 }
 
 resource "google_secret_manager_secret_iam_member" "share_api" {
-  for_each  = nonsensitive(toset(keys(local.secret_values)))
+  for_each  = local.share_api_secrets
   secret_id = google_secret_manager_secret.this[each.key].id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.share_api.member
@@ -46,6 +46,12 @@ resource "google_secret_manager_secret_iam_member" "dms" {
   secret_id = google_secret_manager_secret.this[each.key].id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.document_api.member
+}
+
+resource "google_project_iam_member" "dms_sql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = google_service_account.document_api.member
 }
 
 resource "google_storage_bucket_iam_member" "dms_bucket" {

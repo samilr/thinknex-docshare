@@ -37,6 +37,7 @@ locals {
   secret_values = merge(
     {
       "database-url"        = local.database_url
+      "dms-database-url"    = local.dms_database_url
       "jwt-secret"          = random_password.jwt.result
       "otp-secret"          = random_password.otp.result
       "dms-api-key"         = random_password.dms_api_key.result
@@ -46,8 +47,9 @@ locals {
     var.resend_api_key != "" ? { "resend-api-key" = var.resend_api_key } : {},
     var.anthropic_api_key != "" ? { "anthropic-api-key" = var.anthropic_api_key } : {},
   )
-  # document-api solo lee su API key (mínimo privilegio); share-api lee todos.
-  dms_secrets = ["dms-api-key"]
+  # Mínimo privilegio: cada servicio lee solo sus secretos.
+  dms_secrets       = ["dms-api-key", "dms-database-url"]
+  share_api_secrets = setsubtract(nonsensitive(toset(keys(local.secret_values))), ["dms-database-url"])
 }
 
 resource "google_secret_manager_secret" "this" {

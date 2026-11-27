@@ -40,6 +40,12 @@ resource "google_sql_database" "share" {
   instance = google_sql_database_instance.main.name
 }
 
+# Base del sistema documental simulado (document-api), en la misma instancia.
+resource "google_sql_database" "dms" {
+  name     = "dms"
+  instance = google_sql_database_instance.main.name
+}
+
 resource "google_sql_user" "share" {
   name     = "share"
   instance = google_sql_database_instance.main.name
@@ -47,5 +53,6 @@ resource "google_sql_user" "share" {
 }
 
 locals {
-  database_url = "postgresql+psycopg://${google_sql_user.share.name}:${random_password.db.result}@/${google_sql_database.share.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+  dms_database_url = "postgresql+psycopg://${google_sql_user.share.name}:${random_password.db.result}@/${google_sql_database.dms.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+  database_url     = "postgresql+psycopg://${google_sql_user.share.name}:${random_password.db.result}@/${google_sql_database.share.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
 }
