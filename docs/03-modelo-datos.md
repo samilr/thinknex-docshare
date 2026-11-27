@@ -1,10 +1,13 @@
 # 3. Modelo de datos
 
-PostgreSQL 17. Migraciones con Alembic: [`0001_initial.py`](../services/share-api/app/db/migrations/versions/0001_initial.py).
+PostgreSQL 17. Migraciones con Alembic: [`0001_initial.py`](../services/share-api/app/db/migrations/versions/0001_initial.py)
+(dominio y auditoría) y [`0002_auth_roles.py`](../services/share-api/app/db/migrations/versions/0002_auth_roles.py)
+(autenticación, roles y bandeja simulada).
 
 ```mermaid
 erDiagram
     USERS ||--o{ SHARES : "comparte"
+    USERS ||--o{ REFRESH_TOKENS : "sesiones"
     DOCUMENTS ||--o{ SHARES : "snapshot de"
     RECIPIENTS ||--o{ SHARES : "recibe"
     SHARES ||--o{ OTP_CHALLENGES : "verifica con"
@@ -16,7 +19,29 @@ erDiagram
         uuid id PK
         string email UK
         string name
-        string role "SHARER | AUDITOR"
+        string[] roles "ADMIN | SHARER | AUDITOR"
+        string password_hash "argon2id"
+        bool is_active
+        bool must_change_password
+        int failed_login_attempts
+        timestamptz locked_until
+    }
+    REFRESH_TOKENS {
+        uuid id PK
+        uuid user_id FK
+        string token_hash UK
+        uuid family_id "sesión"
+        timestamptz expires_at
+        timestamptz revoked_at
+        uuid replaced_by "rotación"
+    }
+    SIMULATED_MESSAGES {
+        uuid id PK
+        uuid share_id
+        string channel
+        string kind "LINK | OTP"
+        string to_address
+        text body "SOLO DEMO"
     }
     DOCUMENTS {
         uuid id PK
@@ -107,6 +132,15 @@ anteriores se marcan consumidos), con un máximo de 5 intentos por código y 5 c
 para conciliar con WhatsApp o SMS. Nunca guarda el cuerpo del mensaje, porque contiene el enlace o el
 OTP.
 
+**`users` y `refresh_tokens`: autenticación.** Varios roles por usuario (`roles[]`, con un CHECK
+sobre los valores válidos). La contraseña se guarda con argon2id; el refresh token solo como hash.
+`family_id` agrupa las rotaciones de una sesión: si se presenta un token ya rotado, se revoca la
+familia completa (ADR-0007).
+
+**`simulated_messages`: solo demo.** Copia legible de lo que recibe el destinatario (incluye
+enlace y OTP) para probar el flujo sin canales reales. Tiene TTL de 7 días, la purga el job de
+retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
+
 **`audit_events`: append-only y encadenada.**
 - Sin claves foráneas a propósito: la auditoría debe sobrevivir a cualquier limpieza de otras tablas.
 - `hash = sha256(prev_hash ‖ JSON canónico del evento)`. `GET /api/v1/audit/verify` la recalcula.
@@ -130,6 +164,10 @@ OTP.
 | `SHARE_REVOKED` | USER | Revocación |
 | `SHARE_EXPIRED` / `SHARE_LOCKED` | SYSTEM | Vencimiento o bloqueo por intentos |
 | `SNAPSHOT_PURGED` | SYSTEM | Retención: contenido eliminado, hash conservado |
+| `USER_LOGIN` / `USER_LOGIN_FAILED` / `USER_LOCKED` / `USER_LOGOUT` | USER | Sesiones (los fallidos con email enmascarado) |
+| `USER_CREATED` / `USER_UPDATED` / `USER_DISABLED` / `USER_ENABLED` | USER (ADMIN) | Administración de cuentas, con el detalle de cambios |
+| `PASSWORD_CHANGED` / `PASSWORD_RESET` | USER | Cambio propio o reinicio por un ADMIN |
+| `TOKEN_REUSE_DETECTED` | USER | Refresh token ya rotado presentado de nuevo: sesión revocada |
 
 ### Índices
 

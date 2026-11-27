@@ -136,7 +136,13 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
 | **SQLAlchemy síncrono** | async | boto3 y smtplib son síncronos. El threadpool de FastAPI basta para el volumen esperado |
 | **Problem Details (RFC 7807)** | Errores ad hoc | Contrato de errores estándar y extensible (`report`, `remaining_attempts`) |
 
-## 2.6 Seguridad transversal
+## 2.6 Portal, autenticación y despliegue
+
+- **Portal web** (React + Vite + TypeScript) servido en el mismo origen que la API mediante nginx (ADR-0008).
+- **Autenticación propia** con roles ADMIN, SHARER y AUDITOR, y refresh token rotativo (ADR-0007).
+- **Despliegue en GCP:** Cloud Run, Cloud SQL, Cloud Storage y Secret Manager con Terraform (ADR-0006, [06-despliegue-gcp.md](06-despliegue-gcp.md)).
+
+## 2.7 Seguridad transversal
 
 - **Secretos** solo por variables de entorno (`.env` local, gestor de secretos en producción). La
   configuración exige al menos 32 caracteres para `JWT_SECRET` y `OTP_SECRET`.
