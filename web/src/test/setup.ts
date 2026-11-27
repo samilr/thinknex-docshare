@@ -1,7 +1,10 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./server";
+
+// Las páginas se cargan de forma diferida (code splitting): bajo carga, 1 s por defecto es poco.
+configure({ asyncUtilTimeout: 5000 });
 
 // Polyfills que Mantine necesita en jsdom.
 Object.defineProperty(window, "matchMedia", {
