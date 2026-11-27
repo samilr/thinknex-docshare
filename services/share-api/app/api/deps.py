@@ -15,6 +15,7 @@ from app.domain.enums import Role
 from app.services.access_service import AccessService
 from app.services.auth_service import AuthService
 from app.services.context import RequestContext
+from app.services.library_service import LibraryService
 from app.services.share_service import ShareService
 from app.services.user_service import UserService
 
@@ -130,5 +131,10 @@ def get_access_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> Ac
     return AccessService(db, settings, c.storage, c.channels)
 
 
+def get_library_service(db: DbDep, settings: SettingsDep, c: ComponentsDep) -> LibraryService:
+    return LibraryService(db, settings, c.source)
+
+
 ShareServiceDep = Annotated[ShareService, Depends(get_share_service)]
+LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]
 AccessServiceDep = Annotated[AccessService, Depends(get_access_service)]

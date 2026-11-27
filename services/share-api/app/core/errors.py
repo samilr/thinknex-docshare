@@ -37,6 +37,11 @@ class ConflictError(DomainError):
     title = "Conflicto con el estado actual"
 
 
+class NameConflictError(ConflictError):
+    code = "name_conflict"
+    title = "Ya existe un archivo con ese nombre en esta ubicación"
+
+
 class ValidationFailedError(DomainError):
     status_code = 422
     code = "validation_failed"
@@ -87,6 +92,7 @@ def problem(
 ) -> JSONResponse:
     body = {
         "type": f"https://errors.thinknex.example/{code}",
+        "code": code,
         "title": title,
         "status": status,
         "detail": detail,

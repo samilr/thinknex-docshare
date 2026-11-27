@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     dms_base_url: str = "http://localhost:8001"
     dms_api_key: SecretStr
     dms_timeout_seconds: float = 10.0
+    max_upload_mb: int = 20
     # Si se define, se agrega un ID token de Google (Cloud Run con invoker IAM) además de la key
     dms_audience: str | None = None
 

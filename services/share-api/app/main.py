@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from app.api import health
 from app.api.public import access
-from app.api.v1 import admin, audit, auth, documents, shares, stats
+from app.api.v1 import admin, audit, auth, documents, library, shares, stats
 from app.container import Components, build_components
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
@@ -50,6 +50,7 @@ def create_app(settings: Settings | None = None, components: Components | None =
     for router in (
         auth.router,
         documents.router,
+        library.router,
         shares.router,
         audit.router,
         stats.router,
