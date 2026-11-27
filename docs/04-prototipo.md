@@ -28,11 +28,14 @@ documento se comparte **de forma segura**, que es lo difícil del problema.
 
 Requisitos: Docker (con Compose v2), `make`, `curl` y `jq`. Para correr los tests: [`uv`](https://docs.astral.sh/uv/).
 
+Los comandos respetan `APP_ENV` (`local` por defecto, `hybrid` o `gcp`; ver
+[07-entornos.md](07-entornos.md)).
+
 ```bash
 cp .env.example .env     # valores locales ficticios; make up lo hace si falta
 make up                  # postgres, s3 (SeaweedFS), mailpit, document-api, share-api, web
 make demo                # recorre los 9 pasos del flujo con curl
-make test                # 97 tests: backend (unitarios + integración con Postgres real) + frontend
+make test                # 106 tests: backend (unitarios + integración con Postgres real) + frontend
 make e2e                 # prueba de humo Playwright sobre el portal (requiere `make up`)
 make lint                # ruff + mypy --strict + eslint + prettier + tsc
 make down                # o `make reset` para borrar también los datos

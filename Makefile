@@ -21,7 +21,7 @@ COMPOSE_hybrid := docker compose -p thinknex-hybrid --env-file .env.hybrid -f do
 COMPOSE := $(COMPOSE_$(APP_ENV))
 
 # Terraform con ADC o, si no existe, con un token temporal de la sesión de gcloud.
-TF := terraform -chdir=infra/terraform
+TF := terraform -chdir=$(CURDIR)/infra/terraform
 TF_AUTH := [[ -f "$${CLOUDSDK_CONFIG:-$$HOME/.config/gcloud}/application_default_credentials.json" || -n "$${GOOGLE_OAUTH_ACCESS_TOKEN:-}" ]] || export GOOGLE_OAUTH_ACCESS_TOKEN=$$(gcloud auth print-access-token);
 
 # Credenciales demo y URLs según el entorno (para demo y e2e).

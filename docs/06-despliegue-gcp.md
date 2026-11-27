@@ -67,7 +67,7 @@ cp infra/terraform/demo.tfvars.example infra/terraform/demo.tfvars   # completar
 make gcp-plan
 make gcp-apply
 
-# 5. Imágenes + migraciones + despliegue
+# 5. Imágenes + migraciones + despliegue (equivale a: make up APP_ENV=gcp)
 make gcp-deploy
 
 # 6. Credenciales iniciales (generadas por Terraform)
@@ -94,6 +94,9 @@ Desde ese momento, `.github/workflows/deploy.yml` despliega en cada push a `main
 | `anthropic_api_key` | Activa el chequeo de sensibilidad con Claude |
 | `simulated_inbox_enabled = false` | Apaga la bandeja simulada; recomendado fuera de la demo |
 | `demo_users_enabled = false` | No crea los usuarios ficticios |
+
+Para trabajar desde tu equipo contra esta misma infraestructura (contenedores locales conectados a
+Cloud SQL y Cloud Storage) existe el perfil `APP_ENV=hybrid`: ver [07-entornos.md](07-entornos.md).
 
 ## 6.4 Operación
 
