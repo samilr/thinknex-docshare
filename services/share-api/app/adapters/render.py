@@ -10,8 +10,11 @@ import io
 import math
 import threading
 from collections import OrderedDict
+from functools import cache
+from pathlib import Path
 
 import pypdfium2 as pdfium
+import reportlab
 from PIL import Image, ImageDraw, ImageFont
 
 RENDER_SCALE = 1.6  # ~115 DPI: legible y liviano
@@ -44,7 +47,15 @@ def page_count(content: bytes, mime_type: str) -> int:
     return 1 if k in ("image", "text") else 0
 
 
+# Bitstream Vera (incluida en reportlab): cubre tildes y eñes, a diferencia de la fuente por
+# defecto de Pillow, y evita depender de fuentes del sistema en la imagen del contenedor.
+_FONT_PATH = Path(reportlab.__file__).parent / "fonts" / "Vera.ttf"
+
+
+@cache
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    if _FONT_PATH.exists():
+        return ImageFont.truetype(str(_FONT_PATH), size)
     return ImageFont.load_default(size=size)
 
 
@@ -53,16 +64,19 @@ def _watermark(image: Image.Image, stamp: str) -> Image.Image:
     width, height = base.size
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
 
-    # Texto diagonal repetido, semitransparente, sobre toda la página.
+    # Texto diagonal repetido en filas y columnas, semitransparente, sobre toda la página.
     size = max(14, width // 38)
     font = _font(size)
-    tile = Image.new("RGBA", (int(width * 0.9), size * 3), (0, 0, 0, 0))
-    ImageDraw.Draw(tile).text((10, size // 2), stamp, font=font, fill=(190, 30, 30, 70))
+    text_w = int(font.getlength(stamp)) + size * 4
+    tile = Image.new("RGBA", (text_w, size * 3), (0, 0, 0, 0))
+    ImageDraw.Draw(tile).text((size, size // 2), stamp, font=font, fill=(190, 30, 30, 70))
     tile = tile.rotate(30, expand=True)
+    step_x = max(tile.size[0] * 3 // 4, size * 10)
     step_y = max(tile.size[1] // 2, size * 6)
-    for y in range(-tile.size[1] // 2, height, step_y):
-        offset = (y // step_y) % 2 * (width // 4)
-        overlay.alpha_composite(tile, (int(-width * 0.1) + offset, y))
+    for row, y in enumerate(range(-tile.size[1] // 2, height, step_y)):
+        shift = (row % 2) * (step_x // 2)
+        for x in range(-tile.size[0] // 2 - shift, width, step_x):
+            _paste(overlay, tile, x, y)
 
     # Pie legible con la identidad del acceso.
     footer = _font(max(11, width // 70))
@@ -70,6 +84,14 @@ def _watermark(image: Image.Image, stamp: str) -> Image.Image:
     draw.rectangle([(0, height - size * 2), (width, height)], fill=(255, 255, 255, 200))
     draw.text((12, height - math.ceil(size * 1.6)), stamp, font=footer, fill=(120, 20, 20, 255))
     return Image.alpha_composite(base, overlay).convert("RGB")
+
+
+def _paste(overlay: Image.Image, tile: Image.Image, x: int, y: int) -> None:
+    """alpha_composite no admite destinos negativos: se recorta el mosaico."""
+    left, top = max(0, -x), max(0, -y)
+    if left >= tile.size[0] or top >= tile.size[1]:
+        return
+    overlay.alpha_composite(tile, (max(0, x), max(0, y)), (left, top))
 
 
 def _png(image: Image.Image) -> bytes:
