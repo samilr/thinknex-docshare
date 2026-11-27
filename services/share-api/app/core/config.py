@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     env: Literal["dev", "test", "prod"] = "dev"
     log_level: str = "INFO"
     public_base_url: str = "http://localhost:8000"
+    # Zona horaria del negocio para agrupar indicadores por día
+    business_timezone: str = "America/Santiago"
 
     database_url: str
 

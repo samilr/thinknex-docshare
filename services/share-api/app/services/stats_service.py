@@ -3,6 +3,7 @@
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 from sqlalchemy import ColumnElement, case, func, select
@@ -36,7 +37,9 @@ class Stats(BaseModel):
     users_active: int | None = None
 
 
-def compute(db: Session, *, owner_id: uuid.UUID | None, days: int = 7) -> Stats:
+def compute(
+    db: Session, *, owner_id: uuid.UUID | None, days: int = 7, timezone: str = "UTC"
+) -> Stats:
     def own(stmt: Any) -> Any:  # Select con columnas variables
         return stmt.where(Share.shared_by == owner_id) if owner_id else stmt
 
@@ -68,11 +71,14 @@ def compute(db: Session, *, owner_id: uuid.UUID | None, days: int = 7) -> Stats:
         own(select(func.count(Share.id)).where(Share.sensitivity_decision == "WARN"))
     )
 
+    tz = ZoneInfo(timezone)
     now = datetime.now(UTC)
-    start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    day = func.date_trunc("day", AuditEvent.occurred_at)
+    local_today = now.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = local_today - timedelta(days=days - 1)
+    # Los días se cortan a medianoche de la zona del negocio, no en UTC.
+    day = func.date_trunc("day", AuditEvent.occurred_at, timezone)
     per_day = {
-        row[0].date(): int(row[1])
+        row[0].astimezone(tz).date(): int(row[1])
         for row in db.execute(
             select(day, func.count(AuditEvent.id))
             .where(*event_filter(AuditEventType.DOCUMENT_ACCESSED, start))

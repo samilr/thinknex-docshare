@@ -63,7 +63,7 @@ services:
     environment:
       <<: *s3
       ENV: dev
-      PUBLIC_BASE_URL: http://localhost:8000
+      PUBLIC_BASE_URL: http://localhost:8080
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-share}
       JWT_SECRET: ${JWT_SECRET:?definir en .env}
       OTP_SECRET: ${OTP_SECRET:?definir en .env}
@@ -87,6 +87,19 @@ services:
       s3: { condition: service_healthy }
       mailpit: { condition: service_started }
       document-api: { condition: service_healthy }
+
+  # Portal web: SPA + reverse proxy (mismo origen) hacia share-api.
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_SHOW_DEMO_ACCOUNTS: "true"
+    environment:
+      SHARE_API_URL: http://share-api:8000
+      DNS_RESOLVER: 127.0.0.11
+    ports: ["8080:8080"]
+    depends_on:
+      share-api: { condition: service_healthy }
 
 volumes:
   pgdata:

@@ -1,0 +1,49 @@
+# Una sola URL pública: SPA + reverse proxy hacia share-api (mismo origen: cookies SameSite=Strict
+# sin CORS). Variables: PORT, SHARE_API_URL, DNS_RESOLVER (se sustituyen al arrancar).
+map $http_x_forwarded_proto $forwarded_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+    server_tokens off;
+    root /usr/share/nginx/html;
+    client_max_body_size 1m;
+
+    resolver ${DNS_RESOLVER} valid=30s ipv6=off;
+    set $share_api ${SHARE_API_URL};
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok";
+    }
+
+    # API y página pública del destinatario: los headers de seguridad los define share-api.
+    location ~ ^/(api|s)/ {
+        proxy_pass $share_api;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 60s;
+        # El enlace /s/{token} es una credencial: no se registra en el access log.
+        access_log off;
+    }
+
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

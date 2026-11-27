@@ -85,4 +85,4 @@ info "Intento de alterar un evento directamente en la BD:"
 docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "${POSTGRES_DB:-share}" \
   -c "UPDATE audit_events SET channel='SMS' WHERE id=(SELECT min(id) FROM audit_events)" 2>&1 | sed 's/^/  /' || true
 
-printf "\n"; bold "Listo. Swagger: $BASE/docs · Mailpit: http://localhost:8025"
+printf "\n"; bold "Listo. Portal: http://localhost:8080 · Swagger: $BASE/docs · Mailpit: http://localhost:8025"

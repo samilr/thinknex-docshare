@@ -1,0 +1,88 @@
+/** Etiquetas y colores en español para los valores del dominio. */
+
+type Label = { label: string; color: string };
+
+export const SHARE_STATUS: Record<string, Label> = {
+  ACTIVE: { label: "Activo", color: "green" },
+  REVOKED: { label: "Revocado", color: "gray" },
+  EXPIRED: { label: "Vencido", color: "yellow" },
+  LOCKED: { label: "Bloqueado", color: "red" },
+  EXHAUSTED: { label: "Agotado", color: "blue" },
+};
+
+export const CLASSIFICATION: Record<string, Label> = {
+  PUBLIC: { label: "Pública", color: "teal" },
+  INTERNAL: { label: "Interna", color: "blue" },
+  CONFIDENTIAL: { label: "Confidencial", color: "orange" },
+  RESTRICTED: { label: "Restringida", color: "red" },
+};
+
+export const DECISION: Record<string, Label> = {
+  ALLOW: { label: "Permitido", color: "green" },
+  WARN: { label: "Requiere confirmación", color: "yellow" },
+  BLOCK: { label: "Bloqueado por política", color: "red" },
+};
+
+export const CHANNEL: Record<string, Label> = {
+  EMAIL: { label: "Email", color: "indigo" },
+  WHATSAPP: { label: "WhatsApp", color: "green" },
+  SMS: { label: "SMS", color: "cyan" },
+};
+
+export const ROLE: Record<string, Label> = {
+  ADMIN: { label: "Administrador", color: "grape" },
+  SHARER: { label: "Emisor", color: "blue" },
+  AUDITOR: { label: "Auditor", color: "teal" },
+};
+
+export const FINDING: Record<string, string> = {
+  RUT: "RUT",
+  EMAIL: "Correo electrónico",
+  PHONE: "Teléfono",
+  CARD: "Tarjeta de pago",
+  BANK_ACCOUNT: "Cuenta bancaria",
+};
+
+export const EVENT: Record<string, string> = {
+  SENSITIVITY_CHECKED: "Sensibilidad evaluada",
+  SHARE_BLOCKED: "Intento bloqueado",
+  SHARE_CREATED: "Documento compartido",
+  NOTIFICATION_SENT: "Notificación enviada",
+  NOTIFICATION_FAILED: "Notificación fallida",
+  LINK_OPENED: "Enlace abierto",
+  OTP_SENT: "Código enviado",
+  OTP_VERIFIED: "Código verificado",
+  OTP_FAILED: "Código incorrecto",
+  DOCUMENT_ACCESSED: "Documento descargado",
+  ACCESS_DENIED: "Acceso denegado",
+  SHARE_REVOKED: "Share revocado",
+  SHARE_EXPIRED: "Share vencido",
+  SHARE_LOCKED: "Share bloqueado",
+  SNAPSHOT_PURGED: "Copia eliminada (retención)",
+  USER_LOGIN: "Inicio de sesión",
+  USER_LOGIN_FAILED: "Inicio de sesión fallido",
+  USER_LOCKED: "Usuario bloqueado",
+  USER_LOGOUT: "Cierre de sesión",
+  USER_CREATED: "Usuario creado",
+  USER_UPDATED: "Usuario modificado",
+  USER_DISABLED: "Usuario desactivado",
+  USER_ENABLED: "Usuario activado",
+  PASSWORD_CHANGED: "Contraseña cambiada",
+  PASSWORD_RESET: "Contraseña reiniciada",
+  TOKEN_REUSE_DETECTED: "Reutilización de sesión detectada",
+};
+
+export const EVENT_COLOR: Record<string, string> = {
+  SHARE_BLOCKED: "red",
+  ACCESS_DENIED: "red",
+  OTP_FAILED: "orange",
+  USER_LOGIN_FAILED: "orange",
+  USER_LOCKED: "red",
+  TOKEN_REUSE_DETECTED: "red",
+  SHARE_REVOKED: "gray",
+  DOCUMENT_ACCESSED: "green",
+  SHARE_CREATED: "blue",
+};
+
+export const labelOf = (map: Record<string, Label>, key: string): Label =>
+  map[key] ?? { label: key, color: "gray" };
