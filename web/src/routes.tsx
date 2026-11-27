@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import type { RouteObject } from "react-router";
+import { Navigate, type RouteObject } from "react-router";
 import { RequireAuth, RequireRoles } from "./auth/guards";
 import { AppLayout } from "./layout/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
@@ -19,7 +19,9 @@ const ExplorerPage = lazy(() =>
 const RecipientPage = lazy(() =>
   import("./features/recipient/RecipientPage").then((m) => ({ default: m.RecipientPage })),
 );
-const AskPage = lazy(() => import("./pages/AskPage").then((m) => ({ default: m.AskPage })));
+const AssistantPage = lazy(() =>
+  import("./pages/AssistantPage").then((m) => ({ default: m.AssistantPage })),
+);
 const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
 const PoliciesPage = lazy(() =>
   import("./pages/PoliciesPage").then((m) => ({ default: m.PoliciesPage })),
@@ -60,14 +62,8 @@ export const routes: RouteObject[] = [
         ),
       },
       { path: "envios", element: <SharesPage /> },
-      {
-        path: "preguntar",
-        element: (
-          <RequireRoles roles={["SHARER", "ADMIN"]}>
-            <AskPage />
-          </RequireRoles>
-        ),
-      },
+      { path: "asistente", element: <AssistantPage /> },
+      { path: "preguntar", element: <Navigate to="/asistente" replace /> },
       {
         path: "auditoria",
         element: (

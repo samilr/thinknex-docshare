@@ -136,4 +136,9 @@ def test_inbox_and_stats(api: Api) -> None:
 def test_admin_can_run_retention(api: Api) -> None:
     r = api.client.post("/api/v1/admin/retention/run", headers=admin_headers(api))
     assert r.status_code == 200
-    assert set(r.json()) == {"expired_shares", "purged_snapshots", "purged_inbox_messages"}
+    assert set(r.json()) == {
+        "expired_shares",
+        "purged_snapshots",
+        "purged_inbox_messages",
+        "purged_conversations",
+    }

@@ -38,6 +38,7 @@ import {
   IconPencil,
   IconTrash,
   IconShare,
+  IconSparkles,
   IconUpload,
   IconUsers,
 } from "@tabler/icons-react";
@@ -60,6 +61,7 @@ import {
   useLibraries,
 } from "./api";
 import { DocumentPanel } from "./DocumentPanel";
+import { useAssistant } from "../assistant/context";
 import { EditFileModal } from "./EditFileModal";
 import { FileIcon, LibraryIcon } from "./icons";
 import { NewVersionModal, UploadModal } from "./UploadModal";
@@ -161,6 +163,7 @@ export function ExplorerPage() {
   const [versionFor, setVersionFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<LibraryDocument | null>(null);
   const { user, hasRole } = useAuth();
+  const assistant = useAssistant();
   const canShare = hasRole("SHARER", "ADMIN");
   const canDelete = (doc: LibraryDocument) => hasRole("ADMIN") || doc.created_by === user?.email;
   const confirmDelete = (doc: LibraryDocument) =>
@@ -206,6 +209,27 @@ export function ExplorerPage() {
   const download = (doc: LibraryDocument) =>
     downloadDocument(doc.id, doc.filename || `${doc.id}.pdf`).catch((e: Error) =>
       notifications.show({ color: "red", message: e.message }),
+    );
+
+  const askAssistant = (doc: LibraryDocument) =>
+    assistant.available && (
+      <Tooltip label="Preguntar al asistente">
+        <ActionIcon
+          variant="subtle"
+          color="violet"
+          aria-label={`Asistente: ${doc.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            assistant.openAssistant({
+              documentId: doc.id,
+              documentTitle: doc.title,
+              libraryId: doc.library_id ?? undefined,
+            });
+          }}
+        >
+          <IconSparkles size={18} />
+        </ActionIcon>
+      </Tooltip>
     );
 
   const docMenu = (doc: LibraryDocument) => (
@@ -437,7 +461,12 @@ export function ExplorerPage() {
                             </Text>
                           </Table.Td>
                           <Table.Td>v{doc.version}</Table.Td>
-                          <Table.Td ta="right">{docMenu(doc)}</Table.Td>
+                          <Table.Td ta="right">
+                            <Group gap={2} justify="flex-end" wrap="nowrap">
+                              {askAssistant(doc)}
+                              {docMenu(doc)}
+                            </Group>
+                          </Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
@@ -472,7 +501,8 @@ export function ExplorerPage() {
                     style={{ cursor: "pointer" }}
                     onClick={() => setSelected(doc.id)}
                   >
-                    <Group justify="flex-end" mt={-8} mr={-8}>
+                    <Group justify="flex-end" gap={2} mt={-8} mr={-8}>
+                      {askAssistant(doc)}
                       {docMenu(doc)}
                     </Group>
                     <Stack align="center" gap={6}>

@@ -14,7 +14,7 @@ from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.adapters.storage import BlobStorage
-from app.db.models import Document, Share, SimulatedMessage
+from app.db.models import AiConversation, Document, Share, SimulatedMessage
 from app.domain.enums import ActorType, AuditEventType, ShareStatus
 from app.services import audit_service
 
@@ -24,6 +24,7 @@ class RetentionResult:
     expired_shares: int
     purged_snapshots: int
     purged_inbox_messages: int = 0
+    purged_conversations: int = 0
 
 
 def expire_overdue(db: Session, now: datetime) -> int:
@@ -84,13 +85,30 @@ def purge_inbox(db: Session, now: datetime, ttl_days: int) -> int:
     return int(getattr(result, "rowcount", 0) or 0)
 
 
+def purge_conversations(db: Session, now: datetime, ttl_days: int) -> int:
+    """Conversaciones del asistente sin actividad en ``ttl_days`` (los mensajes caen en cascada)."""
+    result = db.execute(
+        delete(AiConversation).where(AiConversation.updated_at < now - timedelta(days=ttl_days))
+    )
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
 def run(
-    db: Session, storage: BlobStorage, grace_hours: int, *, inbox_ttl_days: int = 7
+    db: Session,
+    storage: BlobStorage,
+    grace_hours: int,
+    *,
+    inbox_ttl_days: int = 7,
+    conversation_ttl_days: int = 30,
 ) -> RetentionResult:
     now = datetime.now(UTC)
     expired = expire_overdue(db, now)
     purged = purge_snapshots(db, storage, now, grace_hours)
     inbox = purge_inbox(db, now, inbox_ttl_days)
+    conversations = purge_conversations(db, now, conversation_ttl_days)
     return RetentionResult(
-        expired_shares=expired, purged_snapshots=purged, purged_inbox_messages=inbox
+        expired_shares=expired,
+        purged_snapshots=purged,
+        purged_inbox_messages=inbox,
+        purged_conversations=conversations,
     )

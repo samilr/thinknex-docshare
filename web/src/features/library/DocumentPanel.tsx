@@ -50,8 +50,7 @@ import {
 } from "../../components/badges";
 import { revealLink, type Share } from "../share/api";
 import { EditShareModal } from "../share/EditShareModal";
-import { AskPanel } from "../ai/AskPanel";
-import { useAiStatus } from "../ai/api";
+import { useAssistant } from "../assistant/context";
 import { LinkReveal } from "../share/LinkReveal";
 import { formatDateTime, formatRelative } from "../../lib/format";
 import { eventSummary } from "../../lib/events";
@@ -203,8 +202,8 @@ export function DocumentPanel({
   const { user, hasRole } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<string | null>("preview");
-  const [page, setPage] = useState<number | undefined>(initialPage);
-  const aiStatus = useAiStatus();
+  const [page] = useState<number | undefined>(initialPage);
+  const assistant = useAssistant();
   const detail = useDocumentDetail(documentId);
   const access = useAccess(tab === "access" ? documentId : null);
   const activity = useActivity(tab === "activity" ? documentId : null);
@@ -289,6 +288,22 @@ export function DocumentPanel({
             )}
           </Group>
           <Group gap="xs">
+            {assistant.available && (
+              <Button
+                variant="gradient"
+                gradient={{ from: "violet", to: "blue", deg: 135 }}
+                leftSection={<IconSparkles size={16} />}
+                onClick={() =>
+                  assistant.openAssistant({
+                    documentId: doc.id,
+                    documentTitle: doc.title,
+                    libraryId: doc.library_id ?? undefined,
+                  })
+                }
+              >
+                Asistente
+              </Button>
+            )}
             {canShare && (
               <Button leftSection={<IconShare size={16} />} onClick={() => onShare(doc)}>
                 Compartir
@@ -341,11 +356,6 @@ export function DocumentPanel({
               <Tabs.Tab value="activity" leftSection={<IconActivity size={14} />}>
                 Actividad
               </Tabs.Tab>
-              {aiStatus.data?.llm && (
-                <Tabs.Tab value="ask" leftSection={<IconSparkles size={14} />}>
-                  Preguntar
-                </Tabs.Tab>
-              )}
             </Tabs.List>
 
             <Tabs.Panel value="preview" pt="md">
@@ -607,17 +617,6 @@ export function DocumentPanel({
                   );
                 })}
               </Stack>
-            </Tabs.Panel>
-
-            <Tabs.Panel value="ask" pt="md">
-              <AskPanel
-                documentIds={[doc.id]}
-                placeholder="Pregunta algo sobre este documento…"
-                onOpenSource={(source) => {
-                  setPage(source.page_from);
-                  setTab("preview");
-                }}
-              />
             </Tabs.Panel>
 
             <Tabs.Panel value="activity" pt="md">

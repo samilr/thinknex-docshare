@@ -933,6 +933,83 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/chat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Chat
+     * @description Asistente con herramientas. SSE: conversation, text, citation, block_end, thinking, step,
+     *     proposal, error, done. Las acciones llegan como propuestas que el usuario confirma.
+     */
+    post: operations["chat_api_v1_ai_chat_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/ai/conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Conversations */
+    get: operations["conversations_api_v1_ai_conversations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/ai/conversations/{conversation_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Conversation */
+    get: operations["conversation_api_v1_ai_conversations__conversation_id__get"];
+    put?: never;
+    post?: never;
+    /** Delete Conversation */
+    delete: operations["delete_conversation_api_v1_ai_conversations__conversation_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/ai/conversations/{conversation_id}/proposals/{proposal_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Proposal Outcome
+     * @description Registra qué hizo el usuario con una propuesta; el asistente lo sabrá en el próximo turno.
+     *     La acción en sí ya quedó auditada por su endpoint (por ejemplo, SHARE_CREATED).
+     */
+    post: operations["proposal_outcome_api_v1_ai_conversations__conversation_id__proposals__proposal_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1079,6 +1156,7 @@ export interface components {
       | "IMPERSONATION_STARTED"
       | "AI_QUERY"
       | "AI_ACTION_PROPOSED"
+      | "AI_ACTION_CONFIRMED"
       | "IMPERSONATION_ENDED"
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
@@ -1184,11 +1262,60 @@ export interface components {
      * @enum {string}
      */
     Channel: "LINK" | "EMAIL" | "WHATSAPP" | "SMS";
+    /** ChatContextIn */
+    ChatContextIn: {
+      /** Path */
+      path?: string | null;
+      /** Document Id */
+      document_id?: string | null;
+      /** Library Id */
+      library_id?: string | null;
+    };
+    /** ChatRequest */
+    ChatRequest: {
+      /** Message */
+      message: string;
+      /** Conversation Id */
+      conversation_id?: string | null;
+      context?: components["schemas"]["ChatContextIn"] | null;
+    };
     /**
      * Classification
      * @enum {string}
      */
     Classification: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+    /** ConversationDetail */
+    ConversationDetail: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Messages */
+      messages: components["schemas"]["MessageOut"][];
+    };
+    /** ConversationOut */
+    ConversationOut: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
     /** DailyCount */
     DailyCount: {
       /**
@@ -1446,6 +1573,22 @@ export interface components {
       last_login_at: string | null;
       impersonator?: components["schemas"]["ImpersonatorOut"] | null;
     };
+    /** MessageOut */
+    MessageOut: {
+      /** Id */
+      id: number;
+      /** Role */
+      role: string;
+      /** Display */
+      display: {
+        [key: string]: unknown;
+      };
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
     /** MetaOut */
     MetaOut: {
       /** App Env */
@@ -1575,6 +1718,13 @@ export interface components {
     PrecheckResponse: {
       document: components["schemas"]["SourceDocument"];
       report: components["schemas"]["SensitivityReport"];
+    };
+    /** ProposalOutcome */
+    ProposalOutcome: {
+      /** Status */
+      status: string;
+      /** Summary */
+      summary: string;
     };
     /** RecipientIn */
     RecipientIn: {
@@ -3801,6 +3951,151 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  chat_api_v1_ai_chat_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChatRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  conversations_api_v1_ai_conversations_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationOut"][];
+        };
+      };
+    };
+  };
+  conversation_api_v1_ai_conversations__conversation_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConversationDetail"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_conversation_api_v1_ai_conversations__conversation_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  proposal_outcome_api_v1_ai_conversations__conversation_id__proposals__proposal_id__post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        conversation_id: string;
+        proposal_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProposalOutcome"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
         headers: {
           [name: string]: unknown;
         };

@@ -33,7 +33,7 @@ type Audience = Schemas["ShareRequest"]["audience"];
 type Permission = Schemas["ShareRequest"]["permission"];
 type Report = Schemas["SensitivityReport"];
 
-interface FormValues {
+export interface ShareFormValues {
   name: string;
   channel: Channel;
   audience: Audience;
@@ -61,12 +61,12 @@ const CHANNEL_OPTIONS = [
   { value: "SMS", label: "SMS" },
 ];
 
-const isAnyone = (v: FormValues) => v.channel === "LINK" && v.audience === "ANYONE";
+const isAnyone = (v: ShareFormValues) => v.channel === "LINK" && v.audience === "ANYONE";
 
-const usesEmail = (v: FormValues) =>
+const usesEmail = (v: ShareFormValues) =>
   v.channel === "EMAIL" || (v.channel === "LINK" && v.codeVia === "EMAIL");
 
-function recipientOf(v: FormValues): Schemas["RecipientIn"] | null {
+function recipientOf(v: ShareFormValues): Schemas["RecipientIn"] | null {
   if (isAnyone(v)) return null;
   return usesEmail(v)
     ? { name: v.name.trim(), email: v.email.trim() }
@@ -149,10 +149,15 @@ export function ShareWizard({
   document,
   opened,
   onClose,
+  initial,
+  onShared,
 }: {
   document: Schemas["SourceDocument"] | null;
   opened: boolean;
   onClose: () => void;
+  /** Valores precargados (por ejemplo, una propuesta del asistente). */
+  initial?: Partial<ShareFormValues>;
+  onShared?: (share: Schemas["ShareOut"]) => void;
 }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -161,7 +166,7 @@ export function ShareWizard({
   const [result, setResult] = useState<Schemas["ShareOut"] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<FormValues>({
+  const form = useForm<ShareFormValues>({
     initialValues: {
       name: "",
       channel: "EMAIL",
@@ -174,6 +179,7 @@ export function ShareWizard({
       reason: "",
       expires: "72",
       maxAccesses: 3,
+      ...initial,
     },
     validate: {
       name: (value, v) =>
@@ -202,7 +208,7 @@ export function ShareWizard({
   };
 
   const precheck = useMutation({
-    mutationFn: async (values: FormValues) => {
+    mutationFn: async (values: ShareFormValues) => {
       const { data, error } = await api.POST("/api/v1/shares/precheck", {
         body: {
           document_id: document!.id,
@@ -223,7 +229,7 @@ export function ShareWizard({
   });
 
   const share = useMutation({
-    mutationFn: async (values: FormValues) => {
+    mutationFn: async (values: ShareFormValues) => {
       const { data, error } = await api.POST("/api/v1/shares", {
         body: {
           document_id: document!.id,
@@ -248,6 +254,7 @@ export function ShareWizard({
     onSuccess: (share) => {
       setResult(share);
       setStep(2);
+      onShared?.(share);
       void queryClient.invalidateQueries({ queryKey: ["shares"] });
       void queryClient.invalidateQueries({ queryKey: ["stats"] });
       notifications.show({

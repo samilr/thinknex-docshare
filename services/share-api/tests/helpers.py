@@ -324,3 +324,48 @@ class FakeLlm:
             usage=Usage(model=model, input_tokens=50, output_tokens=10),
             text=step["text"],
         )
+
+
+def _search_result_count(messages):  # type: ignore[no-untyped-def]
+    count = 0
+    for m in messages:
+        if m["role"] != "user" or not isinstance(m["content"], list):
+            continue
+        for b in m["content"]:
+            if b.get("type") == "search_result":
+                count += 1
+            elif b.get("type") == "tool_result" and isinstance(b.get("content"), list):
+                count += sum(1 for i in b["content"] if i.get("type") == "search_result")
+    return count
+
+
+def _fake_stream_turn(self, *, model, system, messages, tools, max_tokens=4000):  # type: ignore[no-untyped-def]
+    """Turnos guionados: {"tool": nombre, "input": {...}} o {"text": "...", "cite": bool}."""
+    from app.ai.llm import BlockEnd, Citation, TextDelta, ToolStart, TurnEnd, Usage
+
+    self.calls.append(
+        {"model": model, "system": system, "messages": list(messages), "tools": tools}
+    )
+    step = self.tool_script.pop(0) if self.tool_script else {"text": "Listo."}
+    usage = Usage(model=model, input_tokens=80, output_tokens=20)
+    if "tool" in step:
+        call = {
+            "type": "tool_use",
+            "id": f"tu_{len(self.calls)}",
+            "name": step["tool"],
+            "input": step["input"],
+        }
+        yield ToolStart(step["tool"])
+        yield TurnEnd(content=[call], stop_reason="tool_use", usage=usage)
+        return
+    yield TextDelta(step["text"])
+    total = _search_result_count(messages)
+    if step.get("cite") and total:
+        yield Citation(total - 1, 0, 1, "texto citado")
+    yield BlockEnd()
+    yield TurnEnd(
+        content=[{"type": "text", "text": step["text"]}], stop_reason="end_turn", usage=usage
+    )
+
+
+FakeLlm.stream_turn = _fake_stream_turn  # type: ignore[attr-defined]

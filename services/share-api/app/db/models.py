@@ -297,3 +297,32 @@ class AiUsage(Base):
     cache_read_tokens: Mapped[int] = mapped_column(default=0)
     latency_ms: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+
+
+class AiConversation(Base):
+    """Conversación del asistente. Solo la ve su dueño; se purga a los 30 días sin uso."""
+
+    __tablename__ = "ai_conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    # Notas para el próximo turno (p. ej., "el usuario confirmó la propuesta X").
+    pending_notes: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class AiMessage(Base):
+    """Mensaje de la API (para reconstruir el contexto) y, si corresponde, su versión visible."""
+
+    __tablename__ = "ai_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ai_conversations.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(10))
+    content: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    display: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
