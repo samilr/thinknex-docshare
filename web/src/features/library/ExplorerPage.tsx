@@ -36,18 +36,22 @@ import {
   IconList,
   IconSearch,
   IconPencil,
+  IconTrash,
   IconShare,
   IconUpload,
   IconUsers,
 } from "@tabler/icons-react";
+import { modals } from "@mantine/modals";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useAuth } from "../../auth/context";
 import { ClassificationBadge } from "../../components/badges";
 import { PageHeader } from "../../components/PageHeader";
 import { formatRelative } from "../../lib/format";
 import { ShareWizard } from "../share/ShareWizard";
 import {
   createFolder,
+  deleteDocument,
   downloadDocument,
   type Folder,
   type LibraryDocument,
@@ -56,7 +60,7 @@ import {
   useLibraries,
 } from "./api";
 import { DocumentPanel } from "./DocumentPanel";
-import { RenameModal } from "./RenameModal";
+import { EditFileModal } from "./EditFileModal";
 import { FileIcon, LibraryIcon } from "./icons";
 import { NewVersionModal, UploadModal } from "./UploadModal";
 
@@ -153,7 +157,39 @@ export function ExplorerPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [sharing, setSharing] = useState<LibraryDocument | null>(null);
   const [versionFor, setVersionFor] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<LibraryDocument | null>(null);
+  const [editing, setEditing] = useState<LibraryDocument | null>(null);
+  const { user, hasRole } = useAuth();
+  const canShare = hasRole("SHARER");
+  const canDelete = (doc: LibraryDocument) => hasRole("ADMIN") || doc.created_by === user?.email;
+  const confirmDelete = (doc: LibraryDocument) =>
+    modals.openConfirmModal({
+      title: "Eliminar archivo",
+      zIndex: 400,
+      children: (
+        <Text size="sm">
+          «{doc.filename}» dejará de estar en la biblioteca.
+          {doc.active_shares > 0
+            ? ` Sus ${doc.active_shares} envío(s) activo(s) se revocarán: los destinatarios ya no podrán abrirlo.`
+            : ""}{" "}
+          Las versiones se conservan en el sistema documental y la acción queda en la auditoría.
+        </Text>
+      ),
+      labels: { confirm: "Eliminar", cancel: "Cancelar" },
+      confirmProps: { color: "red" },
+      onConfirm: () =>
+        void deleteDocument(doc.id)
+          .then((revoked) => {
+            notifications.show({
+              color: "green",
+              message: `Archivo eliminado${revoked ? ` y ${revoked} envío(s) revocado(s)` : ""}.`,
+            });
+            if (selected === doc.id) setSelected(null);
+            void queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+            void queryClient.invalidateQueries({ queryKey: ["shares"] });
+            void queryClient.invalidateQueries({ queryKey: ["stats"] });
+          })
+          .catch((e: Error) => notifications.show({ color: "red", message: e.message })),
+    });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
 
@@ -189,11 +225,13 @@ export function ExplorerPage() {
         <Menu.Item leftSection={<IconEye size={16} />} onClick={() => setSelected(doc.id)}>
           Abrir
         </Menu.Item>
-        <Menu.Item leftSection={<IconShare size={16} />} onClick={() => setSharing(doc)}>
-          Compartir
-        </Menu.Item>
-        <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setRenaming(doc)}>
-          Renombrar
+        {canShare && (
+          <Menu.Item leftSection={<IconShare size={16} />} onClick={() => setSharing(doc)}>
+            Compartir
+          </Menu.Item>
+        )}
+        <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setEditing(doc)}>
+          Editar
         </Menu.Item>
         <Menu.Item leftSection={<IconUpload size={16} />} onClick={() => setVersionFor(doc.id)}>
           Nueva versión
@@ -201,6 +239,18 @@ export function ExplorerPage() {
         <Menu.Item leftSection={<IconDownload size={16} />} onClick={() => void download(doc)}>
           Descargar
         </Menu.Item>
+        {canDelete(doc) && (
+          <>
+            <Menu.Divider />
+            <Menu.Item
+              color="red"
+              leftSection={<IconTrash size={16} />}
+              onClick={() => confirmDelete(doc)}
+            >
+              Eliminar
+            </Menu.Item>
+          </>
+        )}
       </Menu.Dropdown>
     </Menu>
   );
@@ -452,9 +502,12 @@ export function ExplorerPage() {
         onClose={() => setSelected(null)}
         onShare={setSharing}
         onNewVersion={setVersionFor}
-        onRename={setRenaming}
+        onEdit={setEditing}
+        onDelete={canDelete}
+        confirmDelete={confirmDelete}
+        canShare={canShare}
       />
-      <RenameModal document={renaming} onClose={() => setRenaming(null)} />
+      <EditFileModal document={editing} onClose={() => setEditing(null)} />
       <ShareWizard
         document={sharing}
         opened={sharing !== null}

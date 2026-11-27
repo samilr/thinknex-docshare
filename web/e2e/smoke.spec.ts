@@ -53,9 +53,9 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   // Renombrar: la extensión se conserva y el cambio queda en la actividad del archivo.
   const finalName = fileName.replace(".pdf", "-final");
   await page.getByRole("button", { name: `Acciones de ${fileName.replace(".pdf", "")}` }).click();
-  await page.getByRole("menuitem", { name: "Renombrar" }).click();
-  await page.getByLabel("Nuevo nombre").fill(finalName);
-  await page.getByRole("button", { name: "Renombrar", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill(finalName);
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(page.getByText(finalName, { exact: true })).toBeVisible();
 
   await page.getByText(finalName, { exact: true }).click();
@@ -126,6 +126,21 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await page.getByRole("link", { name: "Usuarios" }).click();
   await expect(page.getByText("carla@thinknex.example")).toBeVisible();
   await shot(page, "10-usuarios");
+
+  // El ADMIN ve las políticas y administra la biblioteca: elimina el archivo de prueba, lo que
+  // revoca su envío activo.
+  await page.getByRole("link", { name: "Políticas" }).click();
+  await expect(page.getByText("Datos personales a externos")).toBeVisible();
+  await shot(page, "10b-politicas");
+  await page.getByRole("link", { name: "Documentos" }).click();
+  await page.getByRole("link", { name: /^Comercial/ }).click();
+  await page.getByText("Certificados", { exact: true }).click();
+  await page.getByRole("button", { name: `Acciones de ${finalName}` }).click();
+  await expect(page.getByRole("menuitem", { name: "Compartir" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Eliminar" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eliminar" }).click();
+  await expect(page.getByText(/Archivo eliminado y 1 envío\(s\) revocado\(s\)/)).toBeVisible();
+  await expect(page.getByText(finalName, { exact: true })).toHaveCount(0);
   await logout(page);
 
   // 3. Carla (AUDITOR) verifica la trazabilidad

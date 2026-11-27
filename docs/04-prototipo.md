@@ -102,9 +102,15 @@ Terraform (ver el README).
      Mailpit; el destinatario ve la versión vigente y puede *Subir nueva versión*. En el panel del
      archivo aparece la versión nueva, subida por `destinatario:<email>`.
    - En *Personas con acceso*, **Nuevo enlace** invalida el anterior ("Enlace no disponible").
-4. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
+4. Como **admin** → *Políticas*: editar "Datos personales a externos" y quitar *Correo
+   electrónico*. Un documento que solo tiene emails deja de pedir confirmación; con RUT sigue
+   pidiéndola. También se pueden crear reglas, por ejemplo "Confidenciales nunca por WhatsApp"
+   (Bloquear, clasificación Confidencial, medio WhatsApp). El AUDITOR ve la página en solo lectura.
+   El admin también entra a *Documentos*: sube, edita (nombre y **clasificación**) y **elimina**
+   archivos. Eliminar revoca los envíos activos del archivo.
+5. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
    el nuevo usuario debe cambiarla al entrar.
-5. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
+6. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
    exportación a CSV. Aparecen `ACCESS_GRANTED`, `DOCUMENT_VIEWED`, `DOCUMENT_VERSION_UPLOADED`
    (actor destinatario) y `SHARE_LINK_ROTATED`.
 

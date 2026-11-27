@@ -152,13 +152,25 @@ export async function uploadVersion(
   return data;
 }
 
-export async function renameDocument(id: string, name: string): Promise<LibraryDocument> {
+export async function updateDocument(
+  id: string,
+  changes: { name?: string; classification?: Classification },
+): Promise<LibraryDocument> {
   const { data, error } = await api.PATCH("/api/v1/library/documents/{doc_id}", {
     params: { path: { doc_id: id } },
-    body: { name },
+    body: changes,
   });
-  if (!data) throw new Error(problemMessage(error, "No fue posible renombrar el archivo"));
+  if (!data) throw new Error(problemMessage(error, "No fue posible actualizar el archivo"));
   return data;
+}
+
+/** Elimina el archivo y revoca sus envíos activos. Devuelve cuántos se revocaron. */
+export async function deleteDocument(id: string): Promise<number> {
+  const { data, error } = await api.DELETE("/api/v1/library/documents/{doc_id}", {
+    params: { path: { doc_id: id } },
+  });
+  if (!data) throw new Error(problemMessage(error, "No fue posible eliminar el archivo"));
+  return data.revoked_shares;
 }
 
 export async function createFolder(libraryId: string, parentId: string | null, name: string) {

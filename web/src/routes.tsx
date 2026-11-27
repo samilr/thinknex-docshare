@@ -20,6 +20,9 @@ const RecipientPage = lazy(() =>
   import("./features/recipient/RecipientPage").then((m) => ({ default: m.RecipientPage })),
 );
 const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
+const PoliciesPage = lazy(() =>
+  import("./pages/PoliciesPage").then((m) => ({ default: m.PoliciesPage })),
+);
 const SharesPage = lazy(() =>
   import("./pages/SharesPage").then((m) => ({ default: m.SharesPage })),
 );
@@ -50,7 +53,7 @@ export const routes: RouteObject[] = [
       {
         path: "documentos/:libraryId?/:folderId?",
         element: (
-          <RequireRoles roles={["SHARER"]}>
+          <RequireRoles roles={["SHARER", "ADMIN"]}>
             <ExplorerPage />
           </RequireRoles>
         ),
@@ -61,6 +64,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRoles roles={["AUDITOR"]}>
             <AuditPage />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: "politicas",
+        element: (
+          <RequireRoles roles={["ADMIN", "AUDITOR"]}>
+            <PoliciesPage />
           </RequireRoles>
         ),
       },

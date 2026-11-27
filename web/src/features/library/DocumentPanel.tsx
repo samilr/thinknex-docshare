@@ -30,6 +30,7 @@ import {
   IconPoint,
   IconRefresh,
   IconShare,
+  IconTrash,
   IconUpload,
   IconUsers,
 } from "@tabler/icons-react";
@@ -139,13 +140,20 @@ export function DocumentPanel({
   onClose,
   onShare,
   onNewVersion,
-  onRename,
+  onEdit,
+  onDelete,
+  confirmDelete,
+  canShare,
 }: {
   documentId: string | null;
   onClose: () => void;
   onShare: (doc: LibraryDocument) => void;
   onNewVersion: (documentId: string) => void;
-  onRename: (doc: LibraryDocument) => void;
+  onEdit: (doc: LibraryDocument) => void;
+  /** Si el usuario puede eliminar este archivo. */
+  onDelete: (doc: LibraryDocument) => boolean;
+  confirmDelete: (doc: LibraryDocument) => void;
+  canShare: boolean;
 }) {
   const { user, hasRole } = useAuth();
   const queryClient = useQueryClient();
@@ -228,9 +236,11 @@ export function DocumentPanel({
             )}
           </Group>
           <Group gap="xs">
-            <Button leftSection={<IconShare size={16} />} onClick={() => onShare(doc)}>
-              Compartir
-            </Button>
+            {canShare && (
+              <Button leftSection={<IconShare size={16} />} onClick={() => onShare(doc)}>
+                Compartir
+              </Button>
+            )}
             <Button
               variant="default"
               leftSection={<IconDownload size={16} />}
@@ -248,10 +258,20 @@ export function DocumentPanel({
             <Button
               variant="default"
               leftSection={<IconPencil size={16} />}
-              onClick={() => onRename(doc)}
+              onClick={() => onEdit(doc)}
             >
-              Renombrar
+              Editar
             </Button>
+            {onDelete(doc) && (
+              <Button
+                variant="light"
+                color="red"
+                leftSection={<IconTrash size={16} />}
+                onClick={() => confirmDelete(doc)}
+              >
+                Eliminar
+              </Button>
+            )}
           </Group>
 
           <Tabs value={tab} onChange={setTab} keepMounted={false}>
@@ -393,13 +413,15 @@ export function DocumentPanel({
               <Stack>
                 <Group justify="space-between">
                   <Text fw={600}>Personas con acceso</Text>
-                  <Button
-                    size="xs"
-                    leftSection={<IconShare size={14} />}
-                    onClick={() => onShare(doc)}
-                  >
-                    Compartir
-                  </Button>
+                  {canShare && (
+                    <Button
+                      size="xs"
+                      leftSection={<IconShare size={14} />}
+                      onClick={() => onShare(doc)}
+                    >
+                      Compartir
+                    </Button>
+                  )}
                 </Group>
                 {access.isPending && <Loader size="sm" />}
                 {access.data?.length === 0 && (

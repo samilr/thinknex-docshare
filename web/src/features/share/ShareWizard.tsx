@@ -141,6 +141,11 @@ export function SensitivityReportView({
           {report.llm.rationale}
         </Alert>
       )}
+      {report.matched_rules && report.matched_rules.length > 0 && (
+        <Text size="xs" c="dimmed">
+          Reglas aplicadas: {report.matched_rules.join(" · ")}
+        </Text>
+      )}
       <Text size="xs" c="dimmed">
         Motor: {report.engine}
         {report.llm_input_truncated ? " · el análisis de IA usó un extracto del documento" : ""}
@@ -211,6 +216,7 @@ export function ShareWizard({
           document_id: document!.id,
           recipient: recipientOf(values),
           audience: isAnyone(values) ? "ANYONE" : "SPECIFIC",
+          channel: values.channel,
         },
       });
       if (!data) throw new Error(problemMessage(error));

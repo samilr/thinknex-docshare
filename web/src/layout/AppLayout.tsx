@@ -25,6 +25,7 @@ import {
   IconShieldCheck,
   IconShieldLock,
   IconSun,
+  IconScale,
   IconUsers,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
@@ -43,9 +44,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Resumen", icon: IconChartBar },
-  { to: "/documentos", label: "Documentos", icon: IconFiles, roles: ["SHARER"] },
+  { to: "/documentos", label: "Documentos", icon: IconFiles, roles: ["SHARER", "ADMIN"] },
   { to: "/envios", label: "Envíos", icon: IconSend },
   { to: "/auditoria", label: "Auditoría", icon: IconShieldCheck, roles: ["AUDITOR"] },
+  { to: "/politicas", label: "Políticas", icon: IconScale, roles: ["ADMIN", "AUDITOR"] },
   { to: "/usuarios", label: "Usuarios", icon: IconUsers, roles: ["ADMIN"] },
   { to: "/bandeja", label: "Bandeja simulada", icon: IconInbox, roles: ["ADMIN"] },
 ];

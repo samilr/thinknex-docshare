@@ -450,14 +450,18 @@ export interface paths {
     get: operations["detail_api_v1_library_documents__doc_id__get"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Delete
+     * @description Elimina el archivo (ADMIN o quien lo subió) y revoca sus envíos activos.
+     */
+    delete: operations["delete_api_v1_library_documents__doc_id__delete"];
     options?: never;
     head?: never;
     /**
-     * Rename
-     * @description Renombra el archivo. Queda en la auditoría (DOCUMENT_RENAMED) con el nombre anterior.
+     * Update
+     * @description Renombra y/o reclasifica. Queda en la auditoría con el valor anterior y el nuevo.
      */
-    patch: operations["rename_api_v1_library_documents__doc_id__patch"];
+    patch: operations["update_api_v1_library_documents__doc_id__patch"];
     trace?: never;
   };
   "/api/v1/library/documents/{doc_id}/content": {
@@ -784,6 +788,45 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/admin/policies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Rules
+     * @description Reglas vigentes y desactivadas. Las ve el ADMIN y también el AUDITOR (solo lectura).
+     */
+    get: operations["list_rules_api_v1_admin_policies_get"];
+    put?: never;
+    /** Create Rule */
+    post: operations["create_rule_api_v1_admin_policies_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/policies/{rule_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Update Rule */
+    put: operations["update_rule_api_v1_admin_policies__rule_id__put"];
+    post?: never;
+    /** Delete Rule */
+    delete: operations["delete_rule_api_v1_admin_policies__rule_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -893,6 +936,11 @@ export interface components {
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
       | "DOCUMENT_RENAMED"
+      | "DOCUMENT_RECLASSIFIED"
+      | "DOCUMENT_DELETED"
+      | "POLICY_CREATED"
+      | "POLICY_UPDATED"
+      | "POLICY_DELETED"
       | "DOCUMENT_VIEWED"
       | "FOLDER_CREATED"
       | "ACCESS_GRANTED"
@@ -1007,6 +1055,11 @@ export interface components {
      * @enum {string}
      */
     Decision: "ALLOW" | "WARN" | "BLOCK";
+    /** DeletedOut */
+    DeletedOut: {
+      /** Revoked Shares */
+      revoked_shares: number;
+    };
     /** DocumentDetail */
     DocumentDetail: {
       document: components["schemas"]["LibraryDocument"];
@@ -1028,13 +1081,15 @@ export interface components {
       sha256: string;
       classification: components["schemas"]["Classification"];
     };
-    /** DocumentRename */
-    DocumentRename: {
+    /** DocumentUpdate */
+    DocumentUpdate: {
       /**
        * Name
        * @description Nuevo nombre, sin extensión
        */
-      name: string;
+      name?: string | null;
+      /** @description Solo ADMIN: cambia qué reglas de la política aplican */
+      classification?: components["schemas"]["Classification"] | null;
     };
     /** DocumentViewOut */
     DocumentViewOut: {
@@ -1245,6 +1300,90 @@ export interface components {
      * @enum {string}
      */
     Permission: "VIEW" | "DOWNLOAD" | "EDIT";
+    /** PolicyRuleIn */
+    PolicyRuleIn: {
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "WARN" | "BLOCK";
+      /**
+       * Message
+       * @description Motivo que verá quien intenta compartir
+       */
+      message: string;
+      /**
+       * Classifications
+       * @description Vacío = cualquier clasificación
+       */
+      classifications?: components["schemas"]["Classification"][];
+      /** @default ANY */
+      recipient: components["schemas"]["RecipientScope"];
+      /**
+       * Finding Types
+       * @description Aplica si el documento contiene al menos uno
+       */
+      finding_types?: ("RUT" | "EMAIL" | "PHONE" | "CARD" | "BANK_ACCOUNT")[];
+      /**
+       * Channels
+       * @description Vacío = cualquier canal
+       */
+      channels?: components["schemas"]["Channel"][];
+      /**
+       * Enabled
+       * @default true
+       */
+      enabled: boolean;
+    };
+    /** PolicyRuleOut */
+    PolicyRuleOut: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "WARN" | "BLOCK";
+      /** Message */
+      message: string;
+      /** Classifications */
+      classifications: components["schemas"]["Classification"][];
+      recipient: components["schemas"]["RecipientScope"];
+      /** Finding Types */
+      finding_types: ("RUT" | "EMAIL" | "PHONE" | "CARD" | "BANK_ACCOUNT")[];
+      /** Channels */
+      channels: components["schemas"]["Channel"][];
+      /** Enabled */
+      enabled: boolean;
+      /** Created By */
+      created_by: string;
+      /** Updated By */
+      updated_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
     /** PrecheckRequest */
     PrecheckRequest: {
       /** Document Id */
@@ -1252,6 +1391,8 @@ export interface components {
       /** @default SPECIFIC */
       audience: components["schemas"]["Audience"];
       recipient?: components["schemas"]["RecipientIn"] | null;
+      /** @description Para evaluar reglas por canal (si se omite, aplican todas) */
+      channel?: components["schemas"]["Channel"] | null;
     };
     /** PrecheckResponse */
     PrecheckResponse: {
@@ -1276,6 +1417,11 @@ export interface components {
       /** Is External */
       is_external: boolean;
     };
+    /**
+     * RecipientScope
+     * @enum {string}
+     */
+    RecipientScope: "ANY" | "INTERNAL" | "EXTERNAL";
     /**
      * Role
      * @enum {string}
@@ -1303,6 +1449,11 @@ export interface components {
        * @default false
        */
       llm_input_truncated: boolean;
+      /**
+       * Matched Rules
+       * @default []
+       */
+      matched_rules: string[];
     };
     /** SessionOut */
     SessionOut: {
@@ -2399,7 +2550,38 @@ export interface operations {
       };
     };
   };
-  rename_api_v1_library_documents__doc_id__patch: {
+  delete_api_v1_library_documents__doc_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeletedOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_api_v1_library_documents__doc_id__patch: {
     parameters: {
       query?: never;
       header?: never;
@@ -2410,7 +2592,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["DocumentRename"];
+        "application/json": components["schemas"]["DocumentUpdate"];
       };
     };
     responses: {
@@ -3067,6 +3249,123 @@ export interface operations {
           "application/json": {
             [key: string]: number;
           };
+        };
+      };
+    };
+  };
+  list_rules_api_v1_admin_policies_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PolicyRuleOut"][];
+        };
+      };
+    };
+  };
+  create_rule_api_v1_admin_policies_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PolicyRuleIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PolicyRuleOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_rule_api_v1_admin_policies__rule_id__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PolicyRuleIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PolicyRuleOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_rule_api_v1_admin_policies__rule_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

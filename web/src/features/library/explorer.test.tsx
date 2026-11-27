@@ -163,7 +163,7 @@ describe("explorador de documentos", () => {
     await waitFor(() => expect(versionUploaded).toBe(true));
   });
 
-  it("renombra un archivo conservando la extensión y muestra el conflicto", async () => {
+  it("edita el nombre de un archivo conservando la extensión y muestra el conflicto", async () => {
     loggedInAs(["SHARER"]);
     mockLibrary();
     const sent: string[] = [];
@@ -188,12 +188,13 @@ describe("explorador de documentos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Acciones de Certificado de cliente" })[0]!,
     );
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Renombrar" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Editar" }));
 
-    const input = await screen.findByLabelText("Nuevo nombre");
+    const input = await screen.findByLabelText("Nombre");
     expect(input).toHaveValue("certificado");
     expect(screen.getByText(".pdf")).toBeInTheDocument();
-    const submit = screen.getByRole("button", { name: "Renombrar" });
+    expect(screen.getByRole("combobox", { name: "Clasificación" })).toBeDisabled(); // no es ADMIN
+    const submit = screen.getByRole("button", { name: "Guardar" });
     expect(submit).toBeDisabled(); // sin cambios
 
     await userEvent.clear(input);
@@ -204,8 +205,53 @@ describe("explorador de documentos", () => {
     await userEvent.clear(input);
     await userEvent.type(input, "Certificado María 2026");
     await userEvent.click(submit);
-    await waitFor(() => expect(screen.queryByLabelText("Nuevo nombre")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument());
     expect(sent).toEqual(["Existente", "Certificado María 2026"]);
+  });
+
+  it("el ADMIN reclasifica un archivo, pero no ve Compartir", async () => {
+    loggedInAs(["ADMIN"], { email: "admin@thinknex.example", name: "Administrador" });
+    mockLibrary();
+    const patches: unknown[] = [];
+    server.use(
+      http.patch("*/api/v1/library/documents/doc-006", async ({ request }) => {
+        patches.push(await request.json());
+        return HttpResponse.json({ ...doc, classification: "CONFIDENTIAL" });
+      }),
+    );
+    renderApp("/documentos/comercial/f-1");
+    await screen.findByText("Certificado de cliente");
+    const actions = () =>
+      screen.getAllByRole("button", { name: "Acciones de Certificado de cliente" })[0]!;
+
+    await userEvent.click(actions());
+    expect(screen.queryByRole("menuitem", { name: "Compartir" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Clasificación" }));
+    await userEvent.click(screen.getByRole("option", { name: "Confidencial", hidden: true }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(patches).toEqual([{ classification: "CONFIDENTIAL" }]));
+  });
+
+  it("el ADMIN elimina un archivo y se le avisa de los envíos que se revocarán", async () => {
+    loggedInAs(["ADMIN"], { email: "admin@thinknex.example", name: "Administrador" });
+    mockLibrary();
+    let deleted = false;
+    server.use(
+      http.delete("*/api/v1/library/documents/doc-006", () => {
+        deleted = true;
+        return HttpResponse.json({ revoked_shares: 2 });
+      }),
+    );
+    renderApp("/documentos/comercial/f-1");
+    await screen.findByText("Certificado de cliente");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Acciones de Certificado de cliente" })[0]!,
+    );
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Eliminar" }));
+    expect(await screen.findByText(/2 envío\(s\) activo\(s\) se revocarán/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    await waitFor(() => expect(deleted).toBe(true));
   });
 
   it("un auditor no accede a la biblioteca", async () => {

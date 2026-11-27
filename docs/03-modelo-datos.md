@@ -173,6 +173,7 @@ retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
 | `DOCUMENT_ACCESSED` | RECIPIENT | Descarga (versión, marca de agua, sha256) |
 | `DOCUMENT_VERSION_UPLOADED` | RECIPIENT | Nueva versión publicada con permiso de edición |
 | `SHARE_LINK_ROTATED` | USER | Se generó un enlace nuevo; el anterior dejó de funcionar |
+| `POLICY_CREATED` / `POLICY_UPDATED` / `POLICY_DELETED` | USER (ADMIN) | Cambios en la política, con el valor anterior y el nuevo (ADR-0011) |
 | `ACCESS_DENIED` | RECIPIENT | Cualquier denegación, con la causa real |
 | `SHARE_REVOKED` | USER | Revocación |
 | `SHARE_EXPIRED` / `SHARE_LOCKED` | SYSTEM | Vencimiento o bloqueo por intentos |
@@ -237,7 +238,7 @@ apunta a un **snapshot** de la versión vigente al momento de compartir, así qu
 versión no cambia lo que ya recibió un destinatario (ADR-0002, ADR-0009).
 
 Eventos de auditoría de la biblioteca: `DOCUMENT_UPLOADED`, `DOCUMENT_VERSION_UPLOADED`,
-`DOCUMENT_RENAMED`, `DOCUMENT_VIEWED` (vista o descarga interna, con versión y modo) y
+`DOCUMENT_RENAMED`, `DOCUMENT_RECLASSIFIED` (solo ADMIN), `DOCUMENT_DELETED`, `DOCUMENT_VIEWED` (vista o descarga interna, con versión y modo) y
 `FOLDER_CREATED`.
 
 **Renombrar** (`PATCH /api/v1/library/documents/{id}`) cambia el título y el nombre de archivo en el
@@ -245,3 +246,12 @@ DMS, conserva la extensión y no crea una versión. Un nombre repetido en la mis
 conflicto (409). La bitácora es `DOCUMENT_RENAMED` en la auditoría encadenada, con quién lo hizo,
 cuándo y desde qué IP, más `from_title`, `to_title`, `from_filename` y `to_filename`. Lo ya
 compartido conserva el nombre de su snapshot.
+
+**Eliminar** (`DELETE /api/v1/library/documents/{id}`, ADMIN o quien subió el archivo) es una
+eliminación lógica en el DMS (`deleted_at`, `deleted_by`): el archivo deja de listarse y servirse,
+pero sus versiones se conservan. Los envíos activos del archivo se revocan en la misma transacción
+(`SHARE_REVOKED` con `reason: DOCUMENT_DELETED`).
+
+**`policy_rules`** (migración `0005`): `name` (único), `action` (`WARN | BLOCK`), `message`,
+`classifications[]`, `recipient` (`ANY | INTERNAL | EXTERNAL`), `finding_types[]`, `channels[]`,
+`enabled`, `created_by` y `updated_by`. Una lista vacía significa "cualquiera" (ADR-0011).
