@@ -11,6 +11,10 @@ dependencies = [
     "boto3>=1.35",
     "reportlab>=4.2",
     "google-cloud-storage>=2.18",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "python-multipart>=0.0.12",
 ]
 
 [dependency-groups]
@@ -25,6 +29,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["app/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
@@ -36,6 +41,7 @@ select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+exclude = ["app/migrations/"]
 
 [[tool.mypy.overrides]]
 module = ["reportlab.*", "google.cloud.*"]

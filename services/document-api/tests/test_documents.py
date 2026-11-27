@@ -1,4 +1,6 @@
 import hashlib
+import io
+import zipfile
 from collections.abc import Iterator
 
 import pytest
@@ -10,19 +12,25 @@ from app.main import create_app
 from app.storage import InMemoryBlobStore
 
 API_KEY = "test-key"
+PDF = b"%PDF-1.4\n%fake pdf for tests\n%%EOF"
 
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    settings = Settings(dms_api_key=SecretStr(API_KEY))
+    settings = Settings(dms_api_key=SecretStr(API_KEY), database_url="sqlite+pysqlite:///:memory:")
     with TestClient(create_app(settings, InMemoryBlobStore())) as c:
         c.headers["X-API-Key"] = API_KEY
+        c.headers["X-Acting-User"] = "ana@thinknex.example"
         yield c
 
 
+def upload(client: TestClient, name: str, data: bytes, **form: str):  # type: ignore[no-untyped-def]
+    fields = {"library_id": "operaciones", "classification": "INTERNAL", **form}
+    return client.post("/documents", data=fields, files={"file": (name, data, "application/pdf")})
+
+
 def test_requires_api_key(client: TestClient) -> None:
-    response = client.get("/documents", headers={"X-API-Key": "wrong"})
-    assert response.status_code == 401
+    assert client.get("/documents", headers={"X-API-Key": "wrong"}).status_code == 401
 
 
 def test_health_is_public(client: TestClient) -> None:
@@ -30,30 +38,116 @@ def test_health_is_public(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok"}
 
 
-def test_list_and_filter(client: TestClient) -> None:
-    page = client.get("/documents").json()
-    assert page["total"] == 6
-    restricted = client.get("/documents", params={"classification": "RESTRICTED"}).json()
-    assert [d["id"] for d in restricted["items"]] == ["doc-005"]
-    assert "storage_key" not in page["items"][0]
+def test_seed_libraries_folders_and_documents(client: TestClient) -> None:
+    libraries = {lib["id"]: lib for lib in client.get("/libraries").json()}
+    assert set(libraries) == {"legal", "rrhh", "operaciones", "comercial", "marketing", "gerencia"}
+    assert libraries["operaciones"]["document_count"] == 1
+    folders = client.get("/folders", params={"library_id": "operaciones"}).json()
+    informes = next(f for f in folders if f["name"] == "Informes trimestrales")
+    docs = client.get(
+        "/documents", params={"library_id": "operaciones", "folder_id": informes["id"]}
+    ).json()
+    assert [d["id"] for d in docs["items"]] == ["doc-003"]
+    assert client.get("/documents").json()["total"] == 6
 
 
-def test_content_matches_published_hash(client: TestClient) -> None:
-    meta = client.get("/documents/doc-002").json()
-    response = client.get("/documents/doc-002/content")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "application/pdf"
-    digest = hashlib.sha256(response.content).hexdigest()
-    assert digest == meta["sha256"] == response.headers["x-content-sha256"]
+def test_content_matches_published_hash_and_versions(client: TestClient) -> None:
+    meta = client.get("/documents/doc-001").json()
+    assert meta["version"] == 2
+    content = client.get("/documents/doc-001/content")
+    assert hashlib.sha256(content.content).hexdigest() == meta["sha256"]
+    versions = client.get("/documents/doc-001/versions").json()
+    assert [v["version"] for v in versions] == [2, 1]
+    v1 = client.get("/documents/doc-001/content", params={"version": 1})
+    assert v1.headers["x-document-version"] == "1"
+    assert hashlib.sha256(v1.content).hexdigest() == versions[1]["sha256"]
 
 
-def test_unknown_document(client: TestClient) -> None:
-    assert client.get("/documents/nope").status_code == 404
+def test_upload_conflict_and_new_version(client: TestClient) -> None:
+    r = upload(client, "Informe semanal.pdf", PDF, title="Informe semanal")
+    assert r.status_code == 201, r.text
+    doc = r.json()
+    assert doc["created_by"] == "ana@thinknex.example" and doc["folder_id"] is None
+    conflict = upload(client, "informe SEMANAL.pdf", PDF)
+    assert conflict.status_code == 409
+    assert conflict.json() == {
+        "detail": "Ya existe un archivo con ese nombre en esta ubicación",
+        "code": "name_conflict",
+        "document_id": doc["id"],
+    }
+    v2 = client.post(
+        f"/documents/{doc['id']}/versions",
+        data={"comment": "Corrige cifras"},
+        files={"file": ("x.pdf", PDF + b" v2", "application/pdf")},
+    )
+    assert v2.status_code == 201 and v2.json()["version"] == 2
+    versions = client.get(f"/documents/{doc['id']}/versions").json()
+    assert versions[0]["comment"] == "Corrige cifras"
+
+
+def test_new_version_must_keep_type(client: TestClient) -> None:
+    doc = upload(client, "nota.pdf", PDF).json()
+    r = client.post(
+        f"/documents/{doc['id']}/versions", files={"file": ("nota.txt", b"hola", "text/plain")}
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("name", "data", "reason"),
+    [
+        ("malware.pdf", b"MZ\x90\x00 executable", "no corresponde"),
+        ("script.exe", b"MZ", "no permitido"),
+        ("vacio.pdf", b"", "vacío"),
+        ("texto.txt", b"bin\x00ario", "no corresponde"),
+    ],
+)
+def test_rejects_invalid_uploads(client: TestClient, name: str, data: bytes, reason: str) -> None:
+    r = upload(client, name, data)
+    assert r.status_code == 422 and reason in r.json()["detail"]
+
+
+def test_rejects_oversized_upload(client: TestClient) -> None:
+    big = PDF + b"0" * (20 * 1024 * 1024)
+    assert upload(client, "grande.pdf", big).status_code == 422
+
+
+def test_filename_is_sanitized(client: TestClient) -> None:
+    r = upload(client, "../../etc/pass wd.pdf", PDF)
+    assert r.status_code == 201 and r.json()["filename"] == "pass wd.pdf"
+
+
+def test_docx_is_validated_by_structure(client: TestClient) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("word/document.xml", "<w/>")
+    ok = client.post(
+        "/documents",
+        data={"library_id": "legal", "classification": "INTERNAL"},
+        files={"file": ("acta.docx", buf.getvalue(), "application/octet-stream")},
+    )
+    assert ok.status_code == 201
+    assert ok.json()["mime_type"].endswith("wordprocessingml.document")
+
+
+def test_folders_and_breadcrumbs(client: TestClient) -> None:
+    root = client.post("/folders", json={"library_id": "legal", "name": "2026"}).json()
+    child = client.post(
+        "/folders", json={"library_id": "legal", "parent_id": root["id"], "name": "Q4"}
+    ).json()
+    assert client.post("/folders", json={"library_id": "legal", "name": "2026"}).status_code == 409
+    path = client.get(f"/folders/{child['id']}/path").json()
+    assert [f["name"] for f in path] == ["2026", "Q4"]
+    other = client.post(
+        "/folders", json={"library_id": "rrhh", "parent_id": root["id"], "name": "x"}
+    )
+    assert other.status_code == 409, "una carpeta no puede colgar de otra biblioteca"
 
 
 def test_pdf_generation_is_deterministic() -> None:
-    from app.catalog import load_seed_entries
-    from app.seed import render_pdf
+    from app.seed import load_catalog, render_pdf
 
-    entry = load_seed_entries(Settings(dms_api_key=SecretStr("x")).seed_catalog_path)[0]
+    catalog = load_catalog(Settings(dms_api_key=SecretStr("x")).seed_catalog_path)
+    entry = catalog.documents[0]
     assert render_pdf(entry) == render_pdf(entry)
+    assert render_pdf(entry, 1) != render_pdf(entry, 2)

@@ -3,11 +3,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy.orm import sessionmaker
 
-from app.catalog import Catalog, load_seed_entries
 from app.config import Settings, get_settings
+from app.db import build_engine, ensure_database, migrate
 from app.routes import router
-from app.seed import seed
+from app.seed import load_catalog, seed
 from app.storage import BlobStore, GcsBlobStore, S3BlobStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -32,19 +33,27 @@ def create_app(settings: Settings | None = None, store: BlobStore | None = None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        if settings.dms_create_database:
+            ensure_database(settings.database_url)
+        engine = build_engine(settings.database_url)
+        migrate(engine)
+        factory = sessionmaker(bind=engine, expire_on_commit=False)
         blob_store = store or _build_store(settings)
-        entries = load_seed_entries(settings.seed_catalog_path)
         if settings.dms_auto_seed:
-            seed(blob_store, entries)
-        catalog = Catalog(blob_store)
-        catalog.load(entries)
-        app.state.catalog = catalog
+            with factory() as db:
+                seed(db, blob_store, load_catalog(settings.seed_catalog_path))
+        app.state.session_factory = factory
+        app.state.store = blob_store
         yield
+        engine.dispose()
 
     app = FastAPI(
         title="Document API (DMS simulado)",
-        version="0.1.0",
-        description="Simula el sistema documental existente. Solo datos ficticios.",
+        version="0.2.0",
+        description=(
+            "Simula el sistema documental de la organización: bibliotecas, carpetas, documentos "
+            "y versiones. Solo datos ficticios. Acceso servicio a servicio (X-API-Key)."
+        ),
         lifespan=lifespan,
     )
     app.state.settings = settings

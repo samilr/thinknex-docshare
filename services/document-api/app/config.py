@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     dms_bucket: str = "dms-documents"
     dms_auto_seed: bool = True
+    # Persistencia de metadata (Postgres en ambientes reales; SQLite en memoria en tests)
+    database_url: str = "sqlite+pysqlite:///:memory:"
+    # Solo local: crea la base si no existe (en la nube la crea Terraform)
+    dms_create_database: bool = False
+    max_upload_mb: int = 20
     seed_catalog_path: Path = SEED_DIR / "catalog.json"
 
 
