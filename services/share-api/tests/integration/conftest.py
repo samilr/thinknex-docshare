@@ -75,6 +75,8 @@ def settings(database: str) -> Settings:
         dms_api_key=SecretStr("unused"),
         public_base_url="http://testserver",
         simulated_inbox_enabled=True,
+        ai_enabled=True,
+        embeddings_provider="fake",
     )
 
 

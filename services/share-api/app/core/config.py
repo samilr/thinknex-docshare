@@ -20,9 +20,10 @@ PROFILE_DEFAULTS: dict[str, dict[str, Any]] = {
         "storage_backend": "gcs",
         "email_provider": "smtp",
         "public_base_url": "http://localhost:8080",
+        "embeddings_provider": "vertex",
     },
     # Todo en Cloud Run. PUBLIC_BASE_URL la define Terraform.
-    "gcp": {"storage_backend": "gcs", "email_provider": "none"},
+    "gcp": {"storage_backend": "gcs", "email_provider": "none", "embeddings_provider": "vertex"},
 }
 
 
@@ -103,6 +104,21 @@ class Settings(BaseSettings):
     sensitivity_llm_model: str = "claude-haiku-5-5"
     sensitivity_llm_max_chars: int = 8000
     sensitivity_llm_timeout_seconds: float = 20.0
+
+    # IA (RAG, copiloto, gobierno). Ver docs/08-ia.md.
+    ai_enabled: bool = False
+    ai_chat_model: str = "claude-sonnet-5-5"
+    ai_fast_model: str = "claude-haiku-5-5"
+    ai_timeout_seconds: float = 90.0
+    ai_redact_pii: bool = True
+    ai_exclude_restricted: bool = True
+    ai_daily_token_budget: int = 600_000
+    ai_chunk_tokens: int = 700
+    ai_chunk_overlap_tokens: int = 80
+    embeddings_provider: Literal["vertex", "fake"] = "fake"
+    embeddings_model: str = "gemini-embedding-001"
+    vertex_project: str | None = None
+    vertex_location: str = "southamerica-east1"
 
     @model_validator(mode="before")
     @classmethod

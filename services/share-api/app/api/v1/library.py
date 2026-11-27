@@ -2,11 +2,29 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel, Field
 
 from app.adapters.document_source import SourceFolder, SourceLibrary, UploadedFile
-from app.api.deps import ContextDep, DbDep, LibraryServiceDep, LibraryUserDep, SettingsDep
+from app.ai.jobs import process_pending
+from app.api.deps import (
+    ComponentsDep,
+    ContextDep,
+    DbDep,
+    LibraryServiceDep,
+    LibraryUserDep,
+    SettingsDep,
+)
 from app.api.v1.audit import events_out
 from app.core.config import Settings
 from app.domain.enums import Classification
@@ -73,6 +91,8 @@ def create_folder(
     responses={409: {"description": "name_conflict: ya existe; subir como nueva versión"}},
 )
 async def upload(
+    background: BackgroundTasks,
+    components: ComponentsDep,
     user: LibraryUserDep,
     service: LibraryServiceDep,
     settings: SettingsDep,
@@ -84,6 +104,7 @@ async def upload(
     title: Annotated[str | None, Form(max_length=300)] = None,
 ) -> UploadResult:
     """Sube un archivo. Devuelve los datos personales detectados para advertir en la interfaz."""
+    background.add_task(process_pending, components, settings)
     return service.upload(
         user,
         await _read(file, settings),
@@ -100,6 +121,8 @@ async def upload(
 )
 async def upload_version(
     doc_id: str,
+    background: BackgroundTasks,
+    components: ComponentsDep,
     user: LibraryUserDep,
     service: LibraryServiceDep,
     settings: SettingsDep,
@@ -107,6 +130,7 @@ async def upload_version(
     file: Annotated[UploadFile, File()],
     comment: Annotated[str, Form(max_length=500)] = "",
 ) -> UploadResult:
+    background.add_task(process_pending, components, settings)
     return service.upload_version(user, doc_id, await _read(file, settings), comment, ctx)
 
 
@@ -131,19 +155,30 @@ class DeletedOut(BaseModel):
 def update(
     doc_id: str,
     body: DocumentUpdate,
+    background: BackgroundTasks,
+    components: ComponentsDep,
+    settings: SettingsDep,
     user: LibraryUserDep,
     service: LibraryServiceDep,
     ctx: ContextDep,
 ) -> LibraryDocument:
     """Renombra y/o reclasifica. Queda en la auditoría con el valor anterior y el nuevo."""
+    background.add_task(process_pending, components, settings)
     return service.update(user, doc_id, name=body.name, classification=body.classification, ctx=ctx)
 
 
 @router.delete("/documents/{doc_id}", response_model=DeletedOut)
 def delete(
-    doc_id: str, user: LibraryUserDep, service: LibraryServiceDep, ctx: ContextDep
+    doc_id: str,
+    background: BackgroundTasks,
+    components: ComponentsDep,
+    settings: SettingsDep,
+    user: LibraryUserDep,
+    service: LibraryServiceDep,
+    ctx: ContextDep,
 ) -> DeletedOut:
     """Elimina el archivo (ADMIN o quien lo subió) y revoca sus envíos activos."""
+    background.add_task(process_pending, components, settings)
     return DeletedOut(revoked_shares=service.delete(user, doc_id, ctx))
 
 

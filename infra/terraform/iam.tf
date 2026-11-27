@@ -59,3 +59,10 @@ resource "google_storage_bucket_iam_member" "dms_bucket" {
   role   = "roles/storage.objectAdmin"
   member = google_service_account.document_api.member
 }
+
+# Embeddings de Vertex AI para el índice de IA (RAG).
+resource "google_project_iam_member" "share_api_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = google_service_account.share_api.member
+}

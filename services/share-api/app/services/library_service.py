@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,7 @@ from app.adapters.document_source import (
     UploadedFile,
 )
 from app.adapters.watermark import apply_watermark
+from app.ai import index_service as ai_index
 from app.core.config import Settings
 from app.core.errors import ForbiddenError, NotFoundError, UpstreamError
 from app.db.models import AuditEvent, Document, Share, User
@@ -45,11 +46,24 @@ class LibraryItems(BaseModel):
     documents: list[LibraryDocument]
 
 
+class AiIndexStatus(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    status: str
+    chunk_count: int
+    indexed_at: datetime | None
+    error: str | None
+    summary: str | None
+    suggested_classification: str | None
+    suggestion_reason: str | None
+
+
 class DocumentDetail(BaseModel):
     document: LibraryDocument
     versions: list[SourceVersion]
     library: SourceLibrary | None
     breadcrumbs: list[SourceFolder]
+    ai: AiIndexStatus | None = None
 
 
 class UploadResult(BaseModel):
@@ -72,6 +86,10 @@ class LibraryService:
     source: DocumentSource
 
     # ------------------------------------------------------------------ helpers
+    def _reindex(self, doc_id: str) -> None:
+        if self.settings.ai_enabled:
+            ai_index.enqueue(self.db, doc_id)
+
     def _audit(
         self,
         event: AuditEventType,
@@ -186,6 +204,7 @@ class LibraryService:
             library_id=library_id,
             findings={f.type: f.count for f in findings},
         )
+        self._reindex(document.id)
         return UploadResult(
             document=self._with_shares([document])[0], findings=findings, new_version=False
         )
@@ -205,6 +224,7 @@ class LibraryService:
             comment=comment,
             findings={f.type: f.count for f in findings},
         )
+        self._reindex(document.id)
         return UploadResult(
             document=self._with_shares([document])[0], findings=findings, new_version=True
         )
@@ -254,6 +274,7 @@ class LibraryService:
                 from_classification=before.classification.value,
                 to_classification=after.classification.value,
             )
+        self._reindex(doc_id)
         return self._with_shares([after])[0]
 
     def delete(self, user: User, doc_id: str, ctx: RequestContext) -> int:
@@ -300,7 +321,14 @@ class LibraryService:
             classification=meta.classification.value,
             revoked_shares=len(active),
         )
+        self._reindex(doc_id)
         return len(active)
+
+    def _ai_status(self, doc_id: str) -> AiIndexStatus | None:
+        if not self.settings.ai_enabled:
+            return None
+        row = ai_index.current_status(self.db, doc_id)
+        return AiIndexStatus.model_validate(row) if row else None
 
     def detail(self, doc_id: str) -> DocumentDetail:
         document = self.source.get_metadata(doc_id)
@@ -315,6 +343,7 @@ class LibraryService:
             versions=self.source.versions(doc_id),
             library=library,
             breadcrumbs=breadcrumbs,
+            ai=self._ai_status(doc_id),
         )
 
     def content(

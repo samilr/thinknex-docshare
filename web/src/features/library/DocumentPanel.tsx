@@ -60,6 +60,7 @@ import {
   libraryKeys,
   useAccess,
   useActivity,
+  type DocumentDetail,
   useDocumentDetail,
 } from "./api";
 import { fileKind, formatBytes } from "./files";
@@ -126,6 +127,28 @@ function Preview({ id, mime, version }: { id: string; mime: string; version: num
       src={url!}
       style={{ width: "100%", height: "68vh", border: 0, borderRadius: 8 }}
     />
+  );
+}
+
+const AI_STATUS: Record<string, { label: string; color: string }> = {
+  INDEXED: { label: "Indexado", color: "teal" },
+  PENDING: { label: "En cola", color: "gray" },
+  EMPTY: { label: "Sin texto", color: "yellow" },
+  SKIPPED: { label: "Excluido", color: "orange" },
+  FAILED: { label: "Error", color: "red" },
+};
+
+function AiIndexBadge({ status }: { status: NonNullable<DocumentDetail["ai"]> }) {
+  const { label, color } = AI_STATUS[status.status] ?? { label: status.status, color: "gray" };
+  return (
+    <Group gap={6}>
+      <Badge variant="light" color={color} size="sm">
+        {label}
+      </Badge>
+      <Text size="xs" c="dimmed">
+        {status.status === "INDEXED" ? `${status.chunk_count} fragmento(s)` : (status.error ?? "")}
+      </Text>
+    </Group>
   );
 }
 
@@ -351,6 +374,11 @@ export function DocumentPanel({
                       {doc.id}
                     </Text>
                   </Field>
+                  {detail.data.ai && (
+                    <Field label="Índice de IA">
+                      <AiIndexBadge status={detail.data.ai} />
+                    </Field>
+                  )}
                 </SimpleGrid>
                 <Field label="Integridad (sha256)">
                   <Text size="xs" ff="monospace" c="dimmed" style={{ wordBreak: "break-all" }}>

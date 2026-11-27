@@ -912,6 +912,23 @@ export interface components {
       /** Remaining Accesses */
       remaining_accesses: number;
     };
+    /** AiIndexStatus */
+    AiIndexStatus: {
+      /** Status */
+      status: string;
+      /** Chunk Count */
+      chunk_count: number;
+      /** Indexed At */
+      indexed_at: string | null;
+      /** Error */
+      error: string | null;
+      /** Summary */
+      summary: string | null;
+      /** Suggested Classification */
+      suggested_classification: string | null;
+      /** Suggestion Reason */
+      suggestion_reason: string | null;
+    };
     /**
      * Audience
      * @enum {string}
@@ -1121,6 +1138,7 @@ export interface components {
       library: components["schemas"]["SourceLibrary"] | null;
       /** Breadcrumbs */
       breadcrumbs: components["schemas"]["SourceFolder"][];
+      ai?: components["schemas"]["AiIndexStatus"] | null;
     };
     /** DocumentOut */
     DocumentOut: {

@@ -2,6 +2,7 @@ locals {
   job_containers = {
     migrate = ["alembic", "upgrade", "head"]
     gc      = ["python", "-m", "app.jobs.gc"]
+    indexer = ["python", "-m", "app.ai.worker"]
   }
 }
 
@@ -75,6 +76,32 @@ resource "google_cloud_scheduler_job" "gc" {
   http_target {
     http_method = "POST"
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.share_api["gc"].name}:run"
+    oauth_token {
+      service_account_email = google_service_account.scheduler.email
+      scope                 = "https://www.googleapis.com/auth/cloud-platform"
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_cloud_run_v2_job_iam_member" "scheduler_indexer" {
+  name     = google_cloud_run_v2_job.share_api["indexer"].name
+  location = var.region
+  role     = "roles/run.invoker"
+  member   = google_service_account.scheduler.member
+}
+
+# Respaldo de la indexación en segundo plano: procesa lo pendiente cada 10 minutos.
+resource "google_cloud_scheduler_job" "indexer" {
+  name      = "${var.name_prefix}-ai-indexer"
+  region    = var.scheduler_region
+  schedule  = "*/10 * * * *"
+  time_zone = var.business_timezone
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.share_api["indexer"].name}:run"
     oauth_token {
       service_account_email = google_service_account.scheduler.email
       scope                 = "https://www.googleapis.com/auth/cloud-platform"

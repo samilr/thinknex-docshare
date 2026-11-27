@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     DateTime,
@@ -218,3 +219,77 @@ class PolicyRuleRow(Base):
     updated_by: Mapped[str] = mapped_column(String(320))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class AiIndex(Base):
+    """Estado del índice de IA de una versión de un documento (por sha256 de su contenido).
+
+    La versión vigente tiene ``is_current``; las anteriores se conservan mientras haya snapshots
+    compartidos que las usen (las preguntas del destinatario consultan su snapshot).
+    """
+
+    __tablename__ = "ai_index"
+    __table_args__ = (UniqueConstraint("source_document_id", "sha256", name="uq_ai_index_doc_sha"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    source_document_id: Mapped[str] = mapped_column(String(100), index=True)
+    sha256: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int]
+    title: Mapped[str] = mapped_column(String(300))
+    filename: Mapped[str] = mapped_column(String(200))
+    mime_type: Mapped[str] = mapped_column(String(120))
+    library_id: Mapped[str | None] = mapped_column(String(40))
+    folder_id: Mapped[str | None] = mapped_column(String(40))
+    classification: Mapped[str] = mapped_column(String(16))
+    is_current: Mapped[bool] = mapped_column(default=True)
+    status: Mapped[str] = mapped_column(String(10), default="PENDING")
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    error: Mapped[str | None] = mapped_column(String(500))
+    embedding_model: Mapped[str | None] = mapped_column(String(80))
+    summary: Mapped[str | None] = mapped_column(Text)
+    suggested_classification: Mapped[str | None] = mapped_column(String(16))
+    suggestion_reason: Mapped[str | None] = mapped_column(String(500))
+    indexed_at: Mapped[datetime | None]
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class AiChunk(Base):
+    __tablename__ = "ai_chunks"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    index_id: Mapped[int] = mapped_column(ForeignKey("ai_index.id", ondelete="CASCADE"), index=True)
+    chunk_index: Mapped[int]
+    page_from: Mapped[int]
+    page_to: Mapped[int]
+    text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
+
+
+class AiJob(Base):
+    """Cola de sincronización del índice (outbox): un pendiente por documento a la vez."""
+
+    __tablename__ = "ai_jobs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    source_document_id: Mapped[str] = mapped_column(String(100), index=True)
+    status: Mapped[str] = mapped_column(String(10), default="PENDING")
+    attempts: Mapped[int] = mapped_column(default=0)
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class AiUsage(Base):
+    """Consumo de modelos por usuario y función (costos y presupuesto diario)."""
+
+    __tablename__ = "ai_usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
+    feature: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(80))
+    input_tokens: Mapped[int] = mapped_column(default=0)
+    output_tokens: Mapped[int] = mapped_column(default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(default=0)
+    latency_ms: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)

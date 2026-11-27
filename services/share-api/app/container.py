@@ -1,6 +1,7 @@
 """Composición de dependencias (composition root). Los tests reemplazan piezas con fakes."""
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -10,6 +11,7 @@ from app.adapters.channels.email_smtp import SmtpEmailChannel
 from app.adapters.channels.mock_messaging import MockMessagingChannel
 from app.adapters.document_source import DocumentSource, HttpDocumentSource
 from app.adapters.storage import BlobStorage, GcsBlobStorage, S3BlobStorage
+from app.ai.providers import Embedder, FakeEmbedder, VertexEmbedder
 from app.core.config import Settings
 from app.db.session import session_factory
 from app.domain.enums import Channel
@@ -24,6 +26,7 @@ class Components:
     storage: BlobStorage
     channels: ChannelRegistry
     checker: SensitivityChecker
+    embedder: Embedder = field(default_factory=FakeEmbedder)
 
 
 def _secret(value: object) -> str | None:
@@ -77,6 +80,17 @@ def build_checker(settings: Settings) -> SensitivityChecker:
     return SensitivityChecker(classifier, settings.sensitivity_llm_max_chars)
 
 
+def build_embedder(settings: Settings) -> Embedder:
+    project = settings.vertex_project or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if settings.embeddings_provider == "vertex":
+        if not project:
+            raise RuntimeError("EMBEDDINGS_PROVIDER=vertex requiere VERTEX_PROJECT")
+        return VertexEmbedder(
+            project=project, location=settings.vertex_location, model=settings.embeddings_model
+        )
+    return FakeEmbedder()
+
+
 def build_components(settings: Settings) -> Components:
     return Components(
         session_factory=session_factory(settings.database_url),
@@ -89,4 +103,5 @@ def build_components(settings: Settings) -> Components:
         storage=build_storage(settings),
         channels=build_channels(settings),
         checker=build_checker(settings),
+        embedder=build_embedder(settings),
     )

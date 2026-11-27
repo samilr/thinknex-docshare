@@ -112,6 +112,13 @@ else
 	$(COMPOSE) exec share-api python -m app.jobs.gc
 endif
 
+ai-index: .env ## Sincroniza el índice de IA con todos los documentos (backfill)
+ifeq ($(APP_ENV),gcp)
+	gcloud run jobs execute docshare-indexer --region "$$($(TF_AUTH) $(TF) output -raw region)" --args=--backfill --wait
+else
+	$(COMPOSE) exec share-api python -m app.ai.worker --backfill
+endif
+
 # ------------------------------------------------------------------------ infraestructura GCP
 gcp-bootstrap: ## GCP: APIs mínimas + bucket de estado (PROJECT_ID=... [REGION=...])
 	./infra/gcp/bootstrap.sh $(PROJECT_ID) $(REGION)

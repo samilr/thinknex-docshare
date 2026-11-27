@@ -35,6 +35,8 @@ test("el menú lateral se contrae, recuerda el estado y los botones usan la mano
     page.getByRole("button", { name: "Menú de usuario" }),
     documentos,
   ]) {
-    expect(await target.evaluate((el) => getComputedStyle(el).cursor)).toBe("pointer");
+    expect(
+      await target.evaluate((el) => el.ownerDocument.defaultView!.getComputedStyle(el).cursor),
+    ).toBe("pointer");
   }
 });

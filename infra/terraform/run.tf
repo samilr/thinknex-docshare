@@ -18,6 +18,10 @@ locals {
     BOOTSTRAP_ADMIN_EMAIL   = var.bootstrap_admin_email
     DEMO_USERS_ENABLED      = tostring(var.demo_users_enabled)
     SENSITIVITY_LLM_ENABLED = tostring(var.anthropic_api_key != "")
+    AI_ENABLED              = tostring(var.ai_enabled)
+    EMBEDDINGS_PROVIDER     = "vertex"
+    VERTEX_PROJECT          = var.project_id
+    VERTEX_LOCATION         = var.vertex_location
   }
   share_api_secret_env = merge(
     {

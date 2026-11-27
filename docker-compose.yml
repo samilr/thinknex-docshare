@@ -34,6 +34,10 @@ services:
       FORWARDED_ALLOW_IPS: "*"
       SENSITIVITY_LLM_ENABLED: ${SENSITIVITY_LLM_ENABLED:-false}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_ENABLED: ${AI_ENABLED:-true}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-fake}
+      VERTEX_PROJECT: ${VERTEX_PROJECT:-}
+      VERTEX_LOCATION: ${VERTEX_LOCATION:-southamerica-east1}
     ports: ["8000:8000"]
     depends_on:
       mailpit: { condition: service_started }

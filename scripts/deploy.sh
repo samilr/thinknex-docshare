@@ -36,7 +36,7 @@ step "Desplegando document-api"
 gcloud run deploy "${NAME_PREFIX}-document-api" --image "$(image document-api)" --region "$REGION" --quiet
 
 step "Migraciones de base de datos (Cloud Run Job)"
-for job in migrate gc; do
+for job in migrate gc indexer; do
   gcloud run jobs update "${NAME_PREFIX}-${job}" --image "$(image share-api)" --region "$REGION" --quiet
 done
 gcloud run jobs execute "${NAME_PREFIX}-migrate" --region "$REGION" --wait
@@ -44,6 +44,10 @@ gcloud run jobs execute "${NAME_PREFIX}-migrate" --region "$REGION" --wait
 step "Desplegando share-api y web"
 gcloud run deploy "${NAME_PREFIX}-share-api" --image "$(image share-api)" --region "$REGION" --quiet
 gcloud run deploy "${NAME_PREFIX}-web" --image "$(image web)" --region "$REGION" --quiet
+
+step "Indice de IA: sincroniza todos los documentos (en segundo plano)"
+gcloud run jobs execute "${NAME_PREFIX}-indexer" --region "$REGION" --args=--backfill --async --quiet \
+  || echo "  (el job de indexacion aun no existe: aplicar Terraform)"
 
 URL=$(gcloud run services describe "${NAME_PREFIX}-web" --region "$REGION" --format='value(status.url)')
 step "Listo: $URL"

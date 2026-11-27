@@ -87,3 +87,15 @@ variable "placeholder_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello"
 }
+
+variable "ai_enabled" {
+  description = "Activa la IA (índice, búsqueda y preguntas). El LLM requiere anthropic_api_key."
+  type        = bool
+  default     = true
+}
+
+variable "vertex_location" {
+  description = "Región de Vertex AI para embeddings (gemini-embedding-001 no está en Santiago)."
+  type        = string
+  default     = "southamerica-east1"
+}

@@ -6,7 +6,8 @@ x-s3: &s3
 
 services:
   postgres:
-    image: postgres:17-alpine
+    build: ./infra/postgres
+    image: thinknex-postgres:17-pgvector
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?definir en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir en .env}
