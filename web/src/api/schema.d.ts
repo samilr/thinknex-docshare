@@ -617,7 +617,11 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /**
+     * Update Share
+     * @description Edita el acceso (permiso, vencimiento, accesos). Aplica de inmediato y queda auditado.
+     */
+    patch: operations["update_share_api_v1_shares__share_id__patch"];
     trace?: never;
   };
   "/api/v1/shares/{share_id}/timeline": {
@@ -664,7 +668,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Reveal Link
+     * @description Vuelve a mostrar el enlace del envío (dueño o ADMIN). Cada consulta queda auditada.
+     */
+    get: operations["reveal_link_api_v1_shares__share_id__link_get"];
     put?: never;
     /**
      * Rotate Link
@@ -987,7 +995,9 @@ export interface components {
       | "DOCUMENT_VIEWED"
       | "FOLDER_CREATED"
       | "ACCESS_GRANTED"
-      | "SHARE_LINK_ROTATED";
+      | "SHARE_LINK_ROTATED"
+      | "SHARE_UPDATED"
+      | "SHARE_LINK_VIEWED";
     /** AuditPage */
     AuditPage: {
       /** Items */
@@ -1155,6 +1165,8 @@ export interface components {
       can_edit: boolean;
       /** Viewer Label */
       viewer_label: string;
+      /** Watermark */
+      watermark: boolean;
     };
     /** FindingSummary */
     FindingSummary: {
@@ -1562,8 +1574,13 @@ export interface components {
       audience: components["schemas"]["Audience"];
       permission: components["schemas"]["Permission"];
       /**
+       * Watermark
+       * @default true
+       */
+      watermark: boolean;
+      /**
        * Link
-       * @description Solo al crear (canal LINK) o al regenerarlo: no se puede recuperar después
+       * @description Al crear (canal LINK), al regenerarlo o al consultarlo con GET /link
        */
       link?: string | null;
       /** Reason */
@@ -1605,6 +1622,12 @@ export interface components {
       audience: components["schemas"]["Audience"];
       /** @default DOWNLOAD */
       permission: components["schemas"]["Permission"];
+      /**
+       * Watermark
+       * @description Marca de agua con la identidad del destinatario
+       * @default true
+       */
+      watermark: boolean;
       recipient?: components["schemas"]["RecipientIn"] | null;
       /**
        * Reason
@@ -1626,6 +1649,22 @@ export interface components {
      * @enum {string}
      */
     ShareStatus: "ACTIVE" | "REVOKED" | "EXPIRED" | "LOCKED" | "EXHAUSTED";
+    /**
+     * ShareUpdate
+     * @description Cambios de acceso sobre un envío existente. Lo omitido no cambia.
+     */
+    ShareUpdate: {
+      permission?: components["schemas"]["Permission"] | null;
+      /** Watermark */
+      watermark?: boolean | null;
+      /**
+       * Expires In Hours
+       * @description Nuevo vencimiento, contado desde ahora
+       */
+      expires_in_hours?: number | null;
+      /** Max Accesses */
+      max_accesses?: number | null;
+    };
     /** SourceDocument */
     SourceDocument: {
       /** Id */
@@ -3031,6 +3070,41 @@ export interface operations {
       };
     };
   };
+  update_share_api_v1_shares__share_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        share_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ShareUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   share_timeline_api_v1_shares__share_id__timeline_get: {
     parameters: {
       query?: never;
@@ -3063,6 +3137,37 @@ export interface operations {
     };
   };
   revoke_share_api_v1_shares__share_id__revoke_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        share_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reveal_link_api_v1_shares__share_id__link_get: {
     parameters: {
       query?: never;
       header?: never;

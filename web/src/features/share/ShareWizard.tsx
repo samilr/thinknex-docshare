@@ -11,6 +11,7 @@ import {
   Select,
   Stack,
   Stepper,
+  Switch,
   Table,
   Text,
   Textarea,
@@ -44,6 +45,7 @@ interface FormValues {
   reason: string;
   expires: string;
   maxAccesses: number;
+  watermark: boolean;
 }
 
 const EXPIRY_OPTIONS = [
@@ -165,6 +167,7 @@ export function ShareWizard({
       channel: "EMAIL",
       audience: "SPECIFIC",
       permission: "DOWNLOAD",
+      watermark: true,
       codeVia: "EMAIL",
       email: "",
       phone: "",
@@ -228,6 +231,7 @@ export function ShareWizard({
           channel: values.channel,
           audience: isAnyone(values) ? "ANYONE" : "SPECIFIC",
           permission: values.permission,
+          watermark: values.watermark,
           reason: values.reason.trim(),
           expires_in_hours: Number(values.expires),
           max_accesses: values.maxAccesses,
@@ -364,6 +368,10 @@ export function ShareWizard({
                 {...form.getInputProps("permission")}
               />
             </div>
+            <Switch
+              label="Marca de agua"
+              {...form.getInputProps("watermark", { type: "checkbox" })}
+            />
             <Textarea label="Motivo" autosize minRows={2} {...form.getInputProps("reason")} />
             <Group grow>
               <Select

@@ -14,7 +14,7 @@ import {
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { IconBan, IconPoint, IconRefresh } from "@tabler/icons-react";
+import { IconAdjustments, IconBan, IconLink, IconPoint, IconRefresh } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 import { api, problemMessage, unwrap } from "../../api/client";
 import { useAuth } from "../../auth/context";
@@ -25,9 +25,12 @@ import {
   DecisionBadge,
   PermissionBadge,
   StatusBadge,
+  WatermarkBadge,
 } from "../../components/badges";
 import { formatDateTime } from "../../lib/format";
 import { EVENT, EVENT_COLOR, FINDING } from "../../lib/labels";
+import { revealLink } from "./api";
+import { EditShareModal } from "./EditShareModal";
 import { LinkReveal } from "./LinkReveal";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -76,6 +79,12 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
     },
     onError: (e) => notifications.show({ color: "red", message: e.message }),
   });
+  const [editing, setEditing] = useState(false);
+  const reveal = useMutation({
+    mutationFn: () => revealLink(shareId!),
+    onSuccess: (link) => setNewLink({ shareId: shareId!, link }),
+    onError: (e) => notifications.show({ color: "red", message: e.message }),
+  });
   const revoke = useMutation({
     mutationFn: async () => {
       const { data, error } = await api.POST("/api/v1/shares/{share_id}/revoke", {
@@ -98,6 +107,9 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
   const s = share.data;
   const canRevoke = s?.status === "ACTIVE" && (s.shared_by === user?.email || hasRole("ADMIN"));
   const canRotate = canRevoke && s?.channel === "LINK";
+  const canEdit =
+    (s?.status === "ACTIVE" || s?.status === "EXHAUSTED") &&
+    (s.shared_by === user?.email || hasRole("ADMIN"));
   const visibleLink = newLink && newLink.shareId === shareId ? newLink.link : null;
   const recipientName = s?.recipient?.name ?? "quien tenga el enlace";
   const report = s?.sensitivity_report as
@@ -150,6 +162,7 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
               <Group gap={6}>
                 <PermissionBadge value={s.permission} />
                 <AudienceBadge value={s.audience} />
+                <WatermarkBadge value={s.watermark} />
               </Group>
             </Field>
             <Field label="Accesos">
@@ -182,6 +195,28 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
             </Text>
           </Field>
           {visibleLink && <LinkReveal link={visibleLink} />}
+          {canEdit && (
+            <Group grow>
+              {!visibleLink && (
+                <Button
+                  variant="light"
+                  leftSection={<IconLink size={16} />}
+                  loading={reveal.isPending}
+                  onClick={() => reveal.mutate()}
+                >
+                  Ver enlace
+                </Button>
+              )}
+              <Button
+                variant="light"
+                leftSection={<IconAdjustments size={16} />}
+                onClick={() => setEditing(true)}
+              >
+                Editar acceso
+              </Button>
+            </Group>
+          )}
+          <EditShareModal share={editing && s ? s : null} onClose={() => setEditing(false)} />
           {canRotate && (
             <Button
               variant="light"

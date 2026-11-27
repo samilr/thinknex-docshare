@@ -20,6 +20,7 @@ function view(permission: "VIEW" | "DOWNLOAD" | "EDIT") {
     can_download: permission !== "VIEW",
     can_edit: permission === "EDIT",
     viewer_label: "Pedro Externo",
+    watermark: true,
   };
 }
 
@@ -77,11 +78,11 @@ describe("Visor del destinatario", () => {
     expect(await screen.findByText("Ana Rojas compartió un documento contigo")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Abrir documento" }));
 
-    expect(await screen.findByRole("heading", { name: "Propuesta comercial" })).toBeInTheDocument();
+    expect(await screen.findByText(/v2 · Pedro Externo/)).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByRole("img", { name: /Página/ })).toHaveLength(2));
     expect(screen.queryByRole("button", { name: "Descargar" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Subir nueva versión" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Solo lectura/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Subir versión" })).not.toBeInTheDocument();
+    expect(screen.getByText("Solo ver")).toBeInTheDocument();
   });
 
   it("persona específica con permiso de edición: verifica el código y puede subir versión", async () => {
@@ -96,9 +97,9 @@ describe("Visor del destinatario", () => {
     await userEvent.click(screen.getAllByRole("textbox")[0]!);
     await userEvent.keyboard("123456");
 
-    expect(await screen.findByRole("button", { name: "Subir nueva versión" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Subir versión" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Descargar" })).toBeInTheDocument();
-    expect(screen.getByText("Versión vigente · v2")).toBeInTheDocument();
+    expect(screen.getByText(/v2 vigente/)).toBeInTheDocument();
   });
 
   it("muestra 'Enlace no disponible' ante un enlace inválido", async () => {

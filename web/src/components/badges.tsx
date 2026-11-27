@@ -2,6 +2,7 @@ import { Badge, Group, Text } from "@mantine/core";
 import {
   IconBrandWhatsapp,
   IconDownload,
+  IconDropletOff,
   IconEye,
   IconLink,
   IconMail,
@@ -69,6 +70,15 @@ export function PermissionBadge({ value }: { value: string }) {
   return (
     <Badge color={color} variant="light" size="sm" leftSection={<Icon size={12} />}>
       {label}
+    </Badge>
+  );
+}
+
+export function WatermarkBadge({ value }: { value: boolean | undefined }) {
+  if (value !== false) return null;
+  return (
+    <Badge color="gray" variant="outline" size="sm" leftSection={<IconDropletOff size={12} />}>
+      Sin marca de agua
     </Badge>
   );
 }

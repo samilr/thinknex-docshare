@@ -22,10 +22,12 @@ import { notifications } from "@mantine/notifications";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   IconActivity,
+  IconAdjustments,
   IconBan,
   IconDownload,
   IconEye,
   IconInfoCircle,
+  IconLink,
   IconPencil,
   IconPoint,
   IconRefresh,
@@ -43,7 +45,10 @@ import {
   ClassificationBadge,
   PermissionBadge,
   StatusBadge,
+  WatermarkBadge,
 } from "../../components/badges";
+import { revealLink, type Share } from "../share/api";
+import { EditShareModal } from "../share/EditShareModal";
 import { LinkReveal } from "../share/LinkReveal";
 import { formatDateTime, formatRelative } from "../../lib/format";
 import { eventSummary } from "../../lib/events";
@@ -180,6 +185,12 @@ export function DocumentPanel({
   });
 
   const [revealed, setRevealed] = useState<{ id: string; link: string } | null>(null);
+  const [editingShare, setEditingShare] = useState<Share | null>(null);
+  const reveal = useMutation({
+    mutationFn: async (shareId: string) => ({ id: shareId, link: await revealLink(shareId) }),
+    onSuccess: setRevealed,
+    onError: (e) => notifications.show({ color: "red", message: e.message }),
+  });
   const rotate = useMutation({
     mutationFn: async (shareId: string) => {
       const { data, error } = await api.POST("/api/v1/shares/{share_id}/link", {
@@ -428,6 +439,9 @@ export function DocumentPanel({
                 {access.data?.map((s) => {
                   const canRevoke =
                     s.status === "ACTIVE" && (s.shared_by === user?.email || hasRole("ADMIN"));
+                  const canManage =
+                    (s.status === "ACTIVE" || s.status === "EXHAUSTED") &&
+                    (s.shared_by === user?.email || hasRole("ADMIN"));
                   const who = s.recipient?.name ?? "Cualquier persona con el enlace";
                   return (
                     <Stack
@@ -454,6 +468,7 @@ export function DocumentPanel({
                           <Group gap={6}>
                             <PermissionBadge value={s.permission} />
                             <AudienceBadge value={s.audience} />
+                            <WatermarkBadge value={s.watermark} />
                           </Group>
                           <Group gap="md">
                             <ChannelLabel channel={s.channel} />
@@ -464,6 +479,27 @@ export function DocumentPanel({
                           </Group>
                         </Stack>
                         <Stack gap={6} align="flex-end">
+                          {canManage && revealed?.id !== s.id && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              leftSection={<IconLink size={14} />}
+                              loading={reveal.isPending && reveal.variables === s.id}
+                              onClick={() => reveal.mutate(s.id)}
+                            >
+                              Ver enlace
+                            </Button>
+                          )}
+                          {canManage && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              leftSection={<IconAdjustments size={14} />}
+                              onClick={() => setEditingShare(s)}
+                            >
+                              Editar acceso
+                            </Button>
+                          )}
                           {canRevoke && s.channel === "LINK" && (
                             <Button
                               size="xs"
@@ -549,6 +585,7 @@ export function DocumentPanel({
           </Tabs>
         </Stack>
       )}
+      <EditShareModal share={editingShare} onClose={() => setEditingShare(null)} />
     </Drawer>
   );
 }

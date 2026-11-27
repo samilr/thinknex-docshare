@@ -41,7 +41,7 @@ test("enlace para cualquiera de solo lectura y regeneración del enlace", async 
   await expect(viewer.getByText("Ana Rojas compartió un documento contigo")).toBeVisible();
   await viewer.getByRole("button", { name: "Abrir documento" }).click();
   await expect(viewer.getByRole("img", { name: "Página 1" })).toBeVisible();
-  await expect(viewer.getByText(/Solo lectura/)).toBeVisible();
+  await expect(viewer.getByText("Solo ver")).toBeVisible();
   await expect(viewer.getByRole("button", { name: "Descargar" })).toHaveCount(0);
   if (SHOTS)
     await viewer.screenshot({ path: `${SHOTS}/13-visor-solo-lectura.png`, fullPage: true });

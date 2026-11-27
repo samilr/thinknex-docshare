@@ -29,14 +29,14 @@ import { formatDateTime } from "../../lib/format";
 import { AccessError, type AccessInfo, accessApi, type AccessSession } from "./accessApi";
 import { DocumentViewer } from "./DocumentViewer";
 
-export function PublicShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+export function PublicShell({ children }: { children: ReactNode }) {
   return (
-    <Box mih="100vh" bg="var(--mantine-color-gray-0)">
+    <Box mih="100vh" bg="var(--viewer-bg)">
       <Box
         component="header"
         px="lg"
         py="sm"
-        bg="white"
+        bg="var(--mantine-color-body)"
         style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}
       >
         <Group gap="xs">
@@ -49,7 +49,7 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
           </Text>
         </Group>
       </Box>
-      <Container size={wide ? "lg" : 460} py="xl">
+      <Container size={460} py={48}>
         {children}
       </Container>
       <Text ta="center" size="xs" c="dimmed" pb="md">
@@ -189,11 +189,7 @@ export function RecipientPage() {
   }
 
   if (session) {
-    return (
-      <PublicShell wide>
-        <DocumentViewer token={token} session={session} onEnded={() => setSession(null)} />
-      </PublicShell>
-    );
+    return <DocumentViewer token={token} session={session} onEnded={() => setSession(null)} />;
   }
 
   const data = info.data;

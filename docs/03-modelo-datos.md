@@ -68,6 +68,8 @@ erDiagram
         string channel "LINK | EMAIL | WHATSAPP | SMS"
         string audience "SPECIFIC | ANYONE"
         string permission "VIEW | DOWNLOAD | EDIT"
+        bool watermark
+        text token_encrypted "AES-GCM; para volver a mostrar el enlace"
         text reason
         string token_hash UK "sha256 del token"
         string status "ACTIVE | REVOKED | EXPIRED | LOCKED | EXHAUSTED"
@@ -173,6 +175,8 @@ retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
 | `DOCUMENT_ACCESSED` | RECIPIENT | Descarga (versión, marca de agua, sha256) |
 | `DOCUMENT_VERSION_UPLOADED` | RECIPIENT | Nueva versión publicada con permiso de edición |
 | `SHARE_LINK_ROTATED` | USER | Se generó un enlace nuevo; el anterior dejó de funcionar |
+| `SHARE_LINK_VIEWED` | USER | Quien compartió (o un ADMIN) volvió a ver el enlace |
+| `SHARE_UPDATED` | USER | Cambio de permiso, marca de agua, vencimiento o accesos (antes y después) |
 | `IMPERSONATION_STARTED` / `IMPERSONATION_ENDED` | USER (ADMIN) | Inicio y fin de "actuar como" otro usuario. Lo hecho mientras tanto lleva `impersonated_by` (ADR-0012) |
 | `POLICY_CREATED` / `POLICY_UPDATED` / `POLICY_DELETED` | USER (ADMIN) | Cambios en la política, con el valor anterior y el nuevo (ADR-0011) |
 | `ACCESS_DENIED` | RECIPIENT | Cualquier denegación, con la causa real |

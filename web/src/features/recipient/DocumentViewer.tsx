@@ -1,34 +1,35 @@
 import {
   ActionIcon,
   Alert,
-  Badge,
+  Box,
   Button,
   Center,
   Group,
   Loader,
   Modal,
   Paper,
-  ScrollArea,
   Skeleton,
   Stack,
   Text,
   Textarea,
+  ThemeIcon,
   Title,
   Tooltip,
+  UnstyledButton,
 } from "@mantine/core";
 import { Dropzone } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconDownload,
-  IconEyeOff,
+  IconFileText,
   IconFileUpload,
   IconUpload,
   IconZoomIn,
   IconZoomOut,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { PermissionBadge } from "../../components/badges";
+import { type ReactNode, useEffect, useState } from "react";
+import { PermissionBadge, WatermarkBadge } from "../../components/badges";
 import { FINDING } from "../../lib/labels";
 import { ACCEPT, formatBytes, MAX_UPLOAD_BYTES } from "../library/files";
 import {
@@ -40,6 +41,7 @@ import {
 } from "./accessApi";
 
 const ZOOM_STEPS = [50, 75, 100, 125, 150, 200];
+const PAGE_WIDTH = 860;
 const blockCopy = {
   onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
   onDragStart: (e: React.DragEvent) => e.preventDefault(),
@@ -71,11 +73,12 @@ function ProtectedPage({
 
   return (
     <Paper
-      shadow="sm"
-      withBorder
+      shadow="md"
+      radius={2}
       mx="auto"
-      w={`${zoom}%`}
-      maw={zoom > 100 ? "none" : 900}
+      data-page={number}
+      w={zoom <= 100 ? `min(100%, ${(PAGE_WIDTH * zoom) / 100}px)` : (PAGE_WIDTH * zoom) / 100}
+      bg="white"
       {...blockCopy}
       style={{ ...blockCopy.style, overflow: "hidden" }}
     >
@@ -93,7 +96,7 @@ function ProtectedPage({
           </Text>
         </Center>
       ) : (
-        <Skeleton h={600} radius={0} />
+        <Skeleton h={(PAGE_WIDTH * zoom * 1.3) / 100} radius={0} />
       )}
     </Paper>
   );
@@ -230,6 +233,7 @@ export function DocumentViewer({
   const access = session.access_token;
   const [zoom, setZoom] = useState(100);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [current, setCurrent] = useState(1);
   const view = useQuery({
     queryKey: ["access", token, "document", access],
     queryFn: () => accessApi.document(token, access),
@@ -241,26 +245,51 @@ export function DocumentViewer({
     onError: (e) => notifications.show({ color: "red", message: e.message }),
   });
 
+  const pageCount = view.data?.page_count ?? 0;
+  useEffect(() => {
+    if (!pageCount || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setCurrent(Number((visible.target as HTMLElement).dataset.page));
+      },
+      { threshold: [0.25, 0.5, 0.75] },
+    );
+    document.querySelectorAll("[data-page]").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [pageCount, zoom]);
+
+  const shell = (content: ReactNode) => (
+    <Box mih="100vh" bg="var(--viewer-bg)">
+      {content}
+    </Box>
+  );
+
   if (view.isPending) {
-    return (
-      <Center py="xl">
+    return shell(
+      <Center mih="100vh">
         <Loader />
-      </Center>
+      </Center>,
     );
   }
   if (view.isError) {
     const ended = view.error instanceof AccessError && view.error.unavailable;
-    return (
-      <Alert color={ended ? "yellow" : "red"} title={ended ? "Tu sesión terminó" : "Error"}>
-        <Stack gap="xs" align="flex-start">
-          <Text size="sm">
-            {ended ? "Vuelve a abrir el enlace para continuar." : view.error.message}
-          </Text>
-          <Button size="xs" variant="light" onClick={onEnded}>
-            Volver a abrir
-          </Button>
-        </Stack>
-      </Alert>
+    return shell(
+      <Center mih="100vh" p="md">
+        <Paper withBorder p="xl" radius="md" maw={420} w="100%">
+          <Stack align="flex-start" gap="sm">
+            <Title order={4}>{ended ? "Tu sesión terminó" : "No se pudo abrir el documento"}</Title>
+            <Text size="sm" c="dimmed">
+              {ended ? "Vuelve a abrir el enlace para continuar." : view.error.message}
+            </Text>
+            <Button variant="light" onClick={onEnded}>
+              Volver a abrir
+            </Button>
+          </Stack>
+        </Paper>
+      </Center>,
     );
   }
 
@@ -268,57 +297,73 @@ export function DocumentViewer({
   const zoomIndex = ZOOM_STEPS.indexOf(zoom);
   const paged = doc.kind === "pdf" || doc.kind === "image";
 
-  return (
-    <Stack>
-      <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" wrap="wrap" gap="sm">
-          <div>
-            <Title order={4}>{doc.title}</Title>
-            <Group gap={6} mt={4}>
+  return shell(
+    <>
+      <Box
+        component="header"
+        pos="sticky"
+        top={0}
+        px="md"
+        bg="var(--mantine-color-body)"
+        style={{ zIndex: 10, borderBottom: "1px solid var(--mantine-color-default-border)" }}
+      >
+        <Group justify="space-between" wrap="nowrap" h={60} gap="md">
+          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+            <ThemeIcon variant="filled" radius="md" size="lg">
+              <IconFileText size={20} />
+            </ThemeIcon>
+            <Stack gap={0} style={{ minWidth: 0 }}>
+              <Text fw={600} truncate="end">
+                {doc.title}
+              </Text>
+              <Text size="xs" c="dimmed" truncate="end">
+                ThinkNex Docs · v{doc.version}
+                {doc.live ? " vigente" : ""} · {doc.viewer_label}
+              </Text>
+            </Stack>
+            <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
               <PermissionBadge value={doc.permission} />
-              <Badge variant="outline" size="sm" color={doc.live ? "teal" : "gray"}>
-                {doc.live
-                  ? `Versión vigente · v${doc.version}`
-                  : `Copia compartida · v${doc.version}`}
-              </Badge>
-              {paged && (
-                <Text size="xs" c="dimmed">
-                  {doc.page_count} página(s) · viendo como {doc.viewer_label}
-                </Text>
-              )}
+              <WatermarkBadge value={doc.watermark} />
             </Group>
-          </div>
-          <Group gap="xs">
+          </Group>
+          <Group gap="xs" wrap="nowrap">
             {paged && (
-              <Group gap={4}>
+              <Group gap={4} wrap="nowrap" visibleFrom="xs">
+                <Text size="sm" c="dimmed" miw={56} ta="center" aria-live="polite">
+                  {current} / {doc.page_count}
+                </Text>
                 <Tooltip label="Alejar">
                   <ActionIcon
-                    variant="default"
+                    variant="subtle"
+                    color="gray"
                     aria-label="Alejar"
                     disabled={zoomIndex <= 0}
                     onClick={() => setZoom(ZOOM_STEPS[zoomIndex - 1]!)}
                   >
-                    <IconZoomOut size={16} />
+                    <IconZoomOut size={18} />
                   </ActionIcon>
                 </Tooltip>
-                <Text size="sm" w={44} ta="center">
-                  {zoom}%
-                </Text>
+                <UnstyledButton onClick={() => setZoom(100)} aria-label="Ajustar al ancho">
+                  <Text size="sm" w={48} ta="center">
+                    {zoom}%
+                  </Text>
+                </UnstyledButton>
                 <Tooltip label="Acercar">
                   <ActionIcon
-                    variant="default"
+                    variant="subtle"
+                    color="gray"
                     aria-label="Acercar"
                     disabled={zoomIndex >= ZOOM_STEPS.length - 1}
                     onClick={() => setZoom(ZOOM_STEPS[zoomIndex + 1]!)}
                   >
-                    <IconZoomIn size={16} />
+                    <IconZoomIn size={18} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
             )}
             {doc.can_download && (
               <Button
-                variant="light"
+                variant="default"
                 leftSection={<IconDownload size={16} />}
                 loading={download.isPending}
                 onClick={() => download.mutate()}
@@ -328,24 +373,16 @@ export function DocumentViewer({
             )}
             {doc.can_edit && (
               <Button leftSection={<IconUpload size={16} />} onClick={() => setUploadOpen(true)}>
-                Subir nueva versión
+                Subir versión
               </Button>
             )}
           </Group>
         </Group>
-        {!doc.can_download && (
-          <Group gap={6} mt="sm">
-            <IconEyeOff size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">
-              Solo lectura
-            </Text>
-          </Group>
-        )}
-      </Paper>
+      </Box>
 
-      {paged ? (
-        <ScrollArea.Autosize mah="calc(100vh - 260px)" type="auto" offsetScrollbars>
-          <Stack gap="md" p={4}>
+      <Box py="xl" px="md" style={{ overflowX: "auto" }}>
+        {paged ? (
+          <Stack gap="lg">
             {Array.from({ length: doc.page_count }, (_, i) => (
               <ProtectedPage
                 key={i}
@@ -357,14 +394,22 @@ export function DocumentViewer({
               />
             ))}
           </Stack>
-        </ScrollArea.Autosize>
-      ) : doc.kind === "text" ? (
-        <TextContent token={token} session={access} version={doc.version} />
-      ) : (
-        <Alert color="gray" title="Vista previa no disponible">
-          Este tipo de archivo no se puede mostrar en el visor.
-        </Alert>
-      )}
+        ) : doc.kind === "text" ? (
+          <Box maw={PAGE_WIDTH} mx="auto">
+            <TextContent token={token} session={access} version={doc.version} />
+          </Box>
+        ) : (
+          <Paper withBorder p="xl" radius="md" maw={480} mx="auto" ta="center">
+            <Text fw={600}>Vista previa no disponible</Text>
+            <Text size="sm" c="dimmed" mt={4}>
+              Este tipo de archivo no se puede mostrar en el visor.
+            </Text>
+          </Paper>
+        )}
+        <Text ta="center" size="xs" c="dimmed" mt="xl">
+          Prototipo de prueba técnica · datos ficticios · no es un servicio oficial de ThinkNex.
+        </Text>
+      </Box>
 
       {doc.can_edit && (
         <UploadVersionModal
@@ -375,6 +420,6 @@ export function DocumentViewer({
           view={doc}
         />
       )}
-    </Stack>
+    </>,
   );
 }

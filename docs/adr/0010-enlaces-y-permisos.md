@@ -15,8 +15,10 @@ En la revisión se pidió una experiencia como la de SharePoint:
 
 ### 1. Canal `LINK` ("Enlace ThinkNex Docs")
 - La aplicación no envía ninguna notificación.
-- La respuesta de creación devuelve el enlace **una sola vez**. Se guarda solo su hash, igual que en
-  los demás canales.
+- La respuesta de creación devuelve el enlace. Se guarda su hash (para buscarlo) y, desde la
+  migración `0009`, también el token **cifrado con AES-GCM**. La clave se deriva con HKDF del secreto
+  del servidor y nunca se guarda en la BD. Así quien compartió (o un ADMIN) puede volver a verlo con
+  `GET /shares/{id}/link`; cada consulta se audita como `SHARE_LINK_VIEWED`.
 - Si se pierde o se filtra, `POST /shares/{id}/link` **genera uno nuevo** y el anterior deja de
   funcionar. Queda auditado como `SHARE_LINK_ROTATED`.
 
@@ -52,8 +54,14 @@ En la revisión se pidió una experiencia como la de SharePoint:
   el archivo nunca sale.
 - **Editar sobre una copia del snapshot:** produciría versiones paralelas que nadie integra. El
   usuario pidió trabajar sobre el archivo vivo.
-- **Recuperar el enlace después de crearlo:** obligaría a guardar el token en claro o cifrado
-  reversible. Rotarlo es igual de práctico y no expone credenciales guardadas.
+- **Guardar el enlace en claro para poder mostrarlo de nuevo:** un volcado de la BD expondría todos
+  los enlaces. Se optó por el cifrado con clave fuera de la BD: un volcado por sí solo no basta.
+
+## Cambios posteriores
+- **Editar el acceso** de un envío vigente (`PATCH /shares/{id}`): permiso, marca de agua,
+  vencimiento y accesos. Aplica de inmediato, incluso a sesiones abiertas, y se audita como
+  `SHARE_UPDATED` con el antes y el después.
+- **Marca de agua opcional** por envío (activa por defecto, migración `0008`).
 
 ## Consecuencias
 - **Honestidad sobre el alcance:** la vista protegida impide obtener el archivo, pero no evita una

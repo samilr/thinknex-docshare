@@ -101,7 +101,9 @@ Terraform (ver el README).
    - *Persona específica* + *Editar* (por ejemplo, el informe de *Operaciones*): el código llega a
      Mailpit; el destinatario ve la versión vigente y puede *Subir nueva versión*. En el panel del
      archivo aparece la versión nueva, subida por `destinatario:<email>`.
-   - En *Personas con acceso*, **Nuevo enlace** invalida el anterior ("Enlace no disponible").
+   - En *Personas con acceso*: **Ver enlace** lo muestra de nuevo; **Editar acceso** cambia el
+     permiso (por ejemplo, quitar la descarga), la marca de agua, el vencimiento o los accesos, con
+     efecto inmediato; **Nuevo enlace** invalida el anterior ("Enlace no disponible").
 4. Como **admin** → *Políticas*: editar "Datos personales a externos" y quitar *Correo
    electrónico*. Un documento que solo tiene emails deja de pedir confirmación; con RUT sigue
    pidiéndola. También se pueden crear reglas, por ejemplo "Confidenciales nunca por WhatsApp"
