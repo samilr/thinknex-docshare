@@ -113,6 +113,7 @@ export function UploadModal({
 
   const close = () => {
     if (busy) return;
+    if (rows.some((r) => r.state === "done")) refresh();
     setRows([]);
     setRejected(null);
     onClose();
@@ -250,6 +251,7 @@ export function NewVersionModal({
   const [result, setResult] = useState<UploadResult | null>(null);
 
   const close = () => {
+    if (result) void queryClient.invalidateQueries({ queryKey: libraryKeys.all });
     setFile(null);
     setComment("");
     setError(null);
