@@ -139,6 +139,11 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
 ## 2.6 Portal, autenticación y despliegue
 
 - **Portal web** (React + Vite + TypeScript) servido en el mismo origen que la API mediante nginx (ADR-0008).
+- **Explorador de documentos estilo SharePoint** (ADR-0009):
+  - bibliotecas por área y carpetas con migas de pan;
+  - subida con arrastrar y soltar, y versiones;
+  - panel del archivo con vista previa (marca de agua y auditoría), detalles e historial,
+    **Personas con acceso** (con revocación), actividad y **Compartir** desde el propio archivo.
 - **Autenticación propia** con roles ADMIN, SHARER y AUDITOR, y refresh token rotativo (ADR-0007).
 - **Despliegue en GCP:** Cloud Run, Cloud SQL, Cloud Storage y Secret Manager con Terraform (ADR-0006, [06-despliegue-gcp.md](06-despliegue-gcp.md)).
 

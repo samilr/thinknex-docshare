@@ -19,6 +19,7 @@ documento se comparte **de forma segura**, que es lo difícil del problema.
 | Integridad y append-only | ✅ | Paso 9, `GET /api/v1/audit/verify` |
 | Retención de snapshots | ✅ | `make gc`, test `test_retention_purges_snapshot_but_keeps_hash` |
 | **Portal web con login y roles** | ✅ | http://localhost:8080 (local) o la URL de Cloud Run |
+| **Explorador tipo SharePoint** (bibliotecas, carpetas, subida, versiones, visor, personas con acceso) | ✅ | Portal → Documentos |
 | Administración de usuarios y roles | ✅ | Portal → Usuarios (ADMIN) |
 | Bandeja simulada (enlaces y OTP) | ✅ | Portal → Bandeja simulada (ADMIN) |
 | Despliegue en GCP | ✅ | [06-despliegue-gcp.md](06-despliegue-gcp.md) |
@@ -31,7 +32,7 @@ Requisitos: Docker (con Compose v2), `make`, `curl` y `jq`. Para correr los test
 cp .env.example .env     # valores locales ficticios; make up lo hace si falta
 make up                  # postgres, s3 (SeaweedFS), mailpit, document-api, share-api, web
 make demo                # recorre los 9 pasos del flujo con curl
-make test                # 77 tests: backend (unitarios + integración con Postgres real) + frontend
+make test                # 97 tests: backend (unitarios + integración con Postgres real) + frontend
 make e2e                 # prueba de humo Playwright sobre el portal (requiere `make up`)
 make lint                # ruff + mypy --strict + eslint + prettier + tsc
 make down                # o `make reset` para borrar también los datos
@@ -71,8 +72,14 @@ Terraform (ver el README).
 
 ## 4.3 Probar el flujo en el portal
 
-1. Entrar como **ana** → *Documentos* → *Compartir* `doc-006` con un email externo. La revisión de
-   seguridad muestra RUT, teléfono y tarjeta enmascarados; hay que confirmar antes de compartir.
+1. Entrar como **ana** → *Documentos*. Elegir la biblioteca *Comercial* → carpeta *Certificados*:
+   - **Subir** un PDF (arrastrar y soltar). Si contiene datos personales, se avisa.
+   - Abrir un archivo: el **panel** muestra la vista previa con marca de agua "Vista interna", el
+     historial de versiones (por ejemplo, `doc-001` en *Legal / Contratos* tiene v1 y v2), las
+     **Personas con acceso** y la **Actividad**.
+   - **Compartir** desde el panel `Certificado de cliente` (doc-006) con un email externo. La revisión
+     de seguridad muestra RUT, teléfono y tarjeta enmascarados; hay que confirmar antes de enviar.
+   - **Nueva versión:** subir un archivo con el mismo nombre ofrece publicarlo como versión nueva.
 2. Cerrar sesión y entrar como **admin** → *Bandeja simulada* → *Abrir como destinatario* →
    *Enviar código* → copiar el código desde la bandeja → *Verificar y descargar* (PDF con marca de
    agua).
@@ -110,8 +117,9 @@ sensibilidad, las categorías y una justificación. Si la API no responde, el si
 
 | Suite | Qué cubre |
 |---|---|
-| `document-api/tests` (6) | API key, filtros, hash publicado = contenido, determinismo del seed |
+| `document-api/tests` (15) | API key, bibliotecas y carpetas, migas de pan, hash publicado = contenido, versiones, conflicto de nombre, **magic bytes**, límite de tamaño, nombre seguro, DOCX por estructura |
 | `share-api/tests/unit` (33) | Detectores (RUT con dígito verificador, Luhn, solapamientos), matriz de política, IA solo advierte, redacción antes del LLM, JWT con tipos, OTP ligado al share, marca de agua, hash canónico, redacción de logs, selección de adaptadores, secretos débiles rechazados |
 | `share-api/tests/integration` (30) | Flujo E2E, 409/403 por sensibilidad, bloqueo por OTP, límite de accesos, revocación, expiración, roles, retención, **trigger append-only**, **detección de manipulación**; login, bloqueo de cuenta, **rotación de refresh con detección de reutilización**, cambio obligatorio de contraseña, desactivación inmediata; administración de usuarios, visibilidad por rol, bandeja e indicadores |
-| `web` Vitest (8) | Guardas de sesión y rol, login, contraseña temporal, asistente de compartir (WARN exige confirmación, BLOCK impide), CSV |
-| `web/e2e` Playwright (1) | Recorrido completo en el navegador contra el stack real |
+| `share-api/tests/integration` biblioteca (7) | Navegación, subida con hallazgos, conflicto y nueva versión, vista interna con marca de agua auditada, personas con acceso y actividad, roles, contenido inválido |
+| `web` Vitest (12) | Guardas de sesión y rol, login, contraseña temporal, asistente de compartir, explorador (carpetas y migas, panel y acceso, conflicto y nueva versión), CSV |
+| `web/e2e` Playwright (1) | En el navegador contra el stack real: navegar, subir, abrir, compartir desde el panel, recibir, descargar y auditar |

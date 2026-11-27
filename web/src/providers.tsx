@@ -16,7 +16,7 @@ export function Providers({
   const [client] = useState(() => queryClient ?? makeQueryClient());
   return (
     <MantineProvider theme={theme} defaultColorScheme="auto">
-      <Notifications position="top-right" />
+      <Notifications position="bottom-right" />
       <QueryClientProvider client={client}>
         <ModalsProvider>
           <AuthProvider>{children}</AuthProvider>

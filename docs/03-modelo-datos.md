@@ -174,3 +174,54 @@ retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
 `shares(token_hash)` único (búsqueda por enlace), `shares(shared_by)`,
 `audit_events(document_id, occurred_at)`, `audit_events(actor_id)`, `audit_events(share_id)` y
 `otp_challenges(share_id, created_at)`.
+
+## Sistema documental (document-api, base `dms`)
+
+```mermaid
+erDiagram
+    LIBRARIES ||--o{ FOLDERS : contiene
+    FOLDERS ||--o{ FOLDERS : "subcarpetas"
+    LIBRARIES ||--o{ DOCUMENTS : contiene
+    FOLDERS ||--o{ DOCUMENTS : contiene
+    DOCUMENTS ||--|{ DOCUMENT_VERSIONS : versiones
+
+    LIBRARIES {
+        string id PK "legal, rrhh, operaciones..."
+        string name
+        string description
+    }
+    FOLDERS {
+        string id PK
+        string library_id FK
+        string parent_id FK "null = raíz"
+        string name "único por carpeta padre"
+        string created_by
+    }
+    DOCUMENTS {
+        string id PK "doc-NNN"
+        string library_id FK
+        string folder_id FK
+        string filename "único por carpeta"
+        string mime_type
+        string classification
+        int current_version
+        string created_by
+    }
+    DOCUMENT_VERSIONS {
+        int id PK
+        string document_id FK
+        int version "único por documento"
+        string sha256
+        int size_bytes
+        string storage_key "{doc}/v{n}.{ext}"
+        string comment
+        string created_by
+    }
+```
+
+El enlace entre ambos modelos es `documents.source_id` (share-api) = `documents.id` (DMS). Cada envío
+apunta a un **snapshot** de la versión vigente al momento de compartir, así que publicar una nueva
+versión no cambia lo que ya recibió un destinatario (ADR-0002, ADR-0009).
+
+Eventos de auditoría de la biblioteca: `DOCUMENT_UPLOADED`, `DOCUMENT_VERSION_UPLOADED`,
+`DOCUMENT_VIEWED` (vista o descarga interna, con versión y modo) y `FOLDER_CREATED`.
