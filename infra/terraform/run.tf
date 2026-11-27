@@ -66,6 +66,25 @@ resource "google_cloud_run_v2_service" "document_api" {
         cpu_idle          = true
         startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
       }
+      # Sondas HTTP: Cloud Run solo enruta tráfico cuando la app responde y reinicia la instancia si deja de hacerlo.
+      startup_probe {
+        http_get {
+          path = "/health"
+          port = 8001
+        }
+        period_seconds    = 2
+        timeout_seconds   = 2
+        failure_threshold = 30
+      }
+      liveness_probe {
+        http_get {
+          path = "/health"
+          port = 8001
+        }
+        period_seconds    = 30
+        timeout_seconds   = 5
+        failure_threshold = 3
+      }
       volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"
@@ -150,6 +169,25 @@ resource "google_cloud_run_v2_service" "share_api" {
         cpu_idle          = true
         startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
       }
+      # Sondas HTTP: Cloud Run solo enruta tráfico cuando la app responde y reinicia la instancia si deja de hacerlo.
+      startup_probe {
+        http_get {
+          path = "/health"
+          port = 8000
+        }
+        period_seconds    = 2
+        timeout_seconds   = 2
+        failure_threshold = 30
+      }
+      liveness_probe {
+        http_get {
+          path = "/health"
+          port = 8000
+        }
+        period_seconds    = 30
+        timeout_seconds   = 5
+        failure_threshold = 3
+      }
       volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"
@@ -208,6 +246,25 @@ resource "google_cloud_run_v2_service" "web" {
         limits            = { cpu = "1", memory = "256Mi" }
         cpu_idle          = true
         startup_cpu_boost = true # arranques en frío más rápidos, sin costo en reposo
+      }
+      # Sondas HTTP: Cloud Run solo enruta tráfico cuando la app responde y reinicia la instancia si deja de hacerlo.
+      startup_probe {
+        http_get {
+          path = "/healthz"
+          port = 8080
+        }
+        period_seconds    = 2
+        timeout_seconds   = 2
+        failure_threshold = 30
+      }
+      liveness_probe {
+        http_get {
+          path = "/healthz"
+          port = 8080
+        }
+        period_seconds    = 30
+        timeout_seconds   = 5
+        failure_threshold = 3
       }
       env {
         name  = "SHARE_API_URL"
