@@ -44,6 +44,7 @@ from app.schemas import (
     ShareListPage,
     ShareOut,
     ShareRequest,
+    ShareUpdate,
 )
 from app.sensitivity.checker import SensitivityChecker, SensitivityReport
 from app.sensitivity.llm_classifier import LlmSensitivity
@@ -230,6 +231,7 @@ class ShareService:
             recipient_id=recipient.id if recipient else None,
             channel=req.channel.value,
             permission=req.permission.value,
+            watermark=req.watermark,
             audience=req.audience.value,
             reason=req.reason,
             token_hash=hash_token(token),
@@ -261,6 +263,7 @@ class ShareService:
                 "recipient_external": is_external,
                 "audience": req.audience.value,
                 "permission": req.permission.value,
+                "watermark": req.watermark,
                 "reason": req.reason,
                 "expires_at": share.expires_at.isoformat(),
                 "max_accesses": max_accesses,
@@ -296,6 +299,90 @@ class ShareService:
             settings=self.settings,
         )
         return to_share_out(share, notification_status="SENT" if result.ok else "FAILED")
+
+    def update(
+        self, user: User, share_id: uuid.UUID, req: ShareUpdate, ctx: RequestContext
+    ) -> ShareOut:
+        """Edita el acceso de un envío vigente: permiso, vencimiento y accesos permitidos.
+
+        Aplica de inmediato, incluso a sesiones ya abiertas del destinatario (cada solicitud lee
+        el permiso desde la BD). Queda auditado con los valores anteriores y nuevos.
+        """
+        share = self._visible(user, share_id)
+        if share.shared_by != user.id and not user.has_any(Role.ADMIN):
+            raise ForbiddenError("Solo quien compartió o un ADMIN puede editar el acceso")
+        now = datetime.now(UTC)
+        if share.status not in (ShareStatus.ACTIVE.value, ShareStatus.EXHAUSTED.value) or (
+            share.expires_at <= now
+        ):
+            raise ConflictError(f"El envío no está vigente (estado actual: {share.status})")
+
+        before = {
+            "permission": share.permission,
+            "watermark": share.watermark,
+            "expires_at": share.expires_at.isoformat(),
+            "max_accesses": share.max_accesses,
+        }
+        if req.permission is not None:
+            if req.permission is Permission.EDIT:
+                if Audience(share.audience) is Audience.ANYONE:
+                    raise ValidationFailedError(
+                        "Un enlace para cualquier persona no admite edición"
+                    )
+                if share.document.classification == Classification.RESTRICTED.value:
+                    raise SharingBlockedError(
+                        "Los documentos RESTRINGIDOS no admiten edición por destinatarios."
+                    )
+            share.permission = req.permission.value
+        if req.watermark is not None:
+            share.watermark = req.watermark
+        if req.expires_in_hours is not None:
+            if req.expires_in_hours > self.settings.max_expiry_hours:
+                raise ValidationFailedError(
+                    f"expires_in_hours no puede superar {self.settings.max_expiry_hours}"
+                )
+            share.expires_at = now + timedelta(hours=req.expires_in_hours)
+        if req.max_accesses is not None:
+            if req.max_accesses > self.settings.max_accesses_limit:
+                raise ValidationFailedError(
+                    f"max_accesses no puede superar {self.settings.max_accesses_limit}"
+                )
+            if req.max_accesses < share.access_count:
+                raise ValidationFailedError(
+                    f"Ya se usaron {share.access_count} acceso(s): el máximo no puede ser menor"
+                )
+            share.max_accesses = req.max_accesses
+            share.status = (
+                ShareStatus.EXHAUSTED.value
+                if share.access_count >= share.max_accesses
+                else ShareStatus.ACTIVE.value
+            )
+
+        after = {
+            "permission": share.permission,
+            "watermark": share.watermark,
+            "expires_at": share.expires_at.isoformat(),
+            "max_accesses": share.max_accesses,
+        }
+        changed = [k for k in before if before[k] != after[k]]
+        if changed:
+            audit_service.record(
+                self.db,
+                event_type=AuditEventType.SHARE_UPDATED,
+                actor_type=ActorType.USER,
+                actor_id=user.id,
+                share_id=share.id,
+                document_id=share.document_id,
+                channel=share.channel,
+                ctx=ctx,
+                details={
+                    "changed": changed,
+                    "before": {k: before[k] for k in changed},
+                    "after": {k: after[k] for k in changed},
+                },
+            )
+        self.db.flush()
+        return to_share_out(share)
 
     def rotate_link(self, user: User, share_id: uuid.UUID, ctx: RequestContext) -> ShareOut:
         """Genera un enlace nuevo para un envío LINK; el anterior deja de funcionar."""
@@ -455,6 +542,7 @@ def to_share_out(
         channel=Channel(share.channel),
         audience=Audience(share.audience),
         permission=Permission(share.permission),
+        watermark=share.watermark,
         link=link,
         reason=share.reason,
         status=status,

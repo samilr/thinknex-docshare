@@ -112,3 +112,9 @@ def test_anyone_blocked_when_content_could_not_be_analyzed() -> None:
     )
     assert apply_link_policy(report, Audience.ANYONE, Permission.VIEW).decision is Decision.BLOCK
     assert apply_link_policy(report, Audience.SPECIFIC, Permission.VIEW).decision is Decision.WARN
+
+
+def test_render_without_watermark() -> None:
+    png = render.render_page(make_pdf("Sin marca"), "application/pdf", 0, None)
+    pixels = Image.open(io.BytesIO(png)).convert("RGB").get_flattened_data()
+    assert not any(r > g + 20 for r, g, _ in pixels), "sin marca no hay texto rojizo"

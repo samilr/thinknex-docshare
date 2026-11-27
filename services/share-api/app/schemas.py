@@ -34,11 +34,25 @@ class RecipientIn(BaseModel):
         return self
 
 
+class ShareUpdate(BaseModel):
+    """Cambios de acceso sobre un envío existente. Lo omitido no cambia."""
+
+    permission: Permission | None = None
+    watermark: bool | None = None
+    expires_in_hours: int | None = Field(
+        default=None, ge=1, description="Nuevo vencimiento, contado desde ahora"
+    )
+    max_accesses: int | None = Field(default=None, ge=1)
+
+
 class ShareRequest(BaseModel):
     document_id: str = Field(min_length=1, max_length=100, examples=["doc-003"])
     channel: Channel
     audience: Audience = Audience.SPECIFIC
     permission: Permission = Permission.DOWNLOAD
+    watermark: bool = Field(
+        default=True, description="Marca de agua con la identidad del destinatario"
+    )
     recipient: RecipientIn | None = None
     reason: str = Field(min_length=3, max_length=500, examples=["Envío de informe al auditor"])
     expires_in_hours: int | None = Field(default=None, ge=1)
@@ -106,6 +120,7 @@ class ShareOut(BaseModel):
     channel: Channel
     audience: Audience
     permission: Permission
+    watermark: bool = True
     link: str | None = Field(
         default=None,
         description="Solo al crear (canal LINK) o al regenerarlo: no se puede recuperar después",

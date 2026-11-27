@@ -49,6 +49,7 @@ class DocumentViewOut(BaseModel):
     can_download: bool
     can_edit: bool
     viewer_label: str
+    watermark: bool
 
 
 class VersionPublishedOut(BaseModel):

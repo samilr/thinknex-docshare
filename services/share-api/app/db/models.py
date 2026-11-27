@@ -124,6 +124,8 @@ class Share(Base):
     recipient_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("recipients.id"))
     channel: Mapped[str] = mapped_column(String(16))
     permission: Mapped[str] = mapped_column(String(8), default="DOWNLOAD")
+    # Marca de agua con la identidad del destinatario en el visor y en la descarga.
+    watermark: Mapped[bool] = mapped_column(default=True)
     audience: Mapped[str] = mapped_column(String(8), default="SPECIFIC")
     reason: Mapped[str] = mapped_column(Text)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)

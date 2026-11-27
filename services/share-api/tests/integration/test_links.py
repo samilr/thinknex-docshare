@@ -211,3 +211,73 @@ def test_session_is_bound_to_its_share(api: Api) -> None:
     access_a = api.open_link(a)
     r = api.client.get(f"{ACCESS}/{b}/document", headers={"Authorization": f"Bearer {access_a}"})
     assert r.status_code == 404
+
+
+def test_owner_edits_access_and_it_applies_immediately(api: Api) -> None:
+    share = api.share(max_accesses=1)
+    token = api.last_link_token()
+    auth = {"Authorization": f"Bearer {api.unlock(token)}"}
+    assert api.client.get(f"{ACCESS}/{token}/download", headers=auth).status_code == 200
+    url = f"/api/v1/shares/{share['id']}"
+    ana = api.headers("ana@thinknex.example")
+
+    r = api.client.patch(url, json={"permission": "VIEW"}, headers=ana)
+    assert r.status_code == 200, r.text
+    assert r.json()["permission"] == "VIEW"
+    # La sesión ya abierta del destinatario pierde la descarga de inmediato.
+    assert api.client.get(f"{ACCESS}/{token}/download", headers=auth).status_code == 403
+    assert api.client.get(f"{ACCESS}/{token}/pages/1", headers=auth).status_code == 200
+
+    # Agotado (1 de 1): subir el máximo lo reactiva; bajarlo bajo lo usado no se permite.
+    detail = api.client.get(url, headers=ana).json()
+    assert detail["status"] == "EXHAUSTED"
+    assert api.client.patch(url, json={"max_accesses": 0}, headers=ana).status_code == 422
+    r = api.client.patch(url, json={"max_accesses": 3, "expires_in_hours": 24}, headers=ana)
+    assert r.status_code == 200 and r.json()["status"] == "ACTIVE"
+
+    updated = api.audit(share_id=str(share["id"]), event_type="SHARE_UPDATED")
+    first = updated[-1]["metadata"]
+    assert first["changed"] == ["permission"]  # type: ignore[index]
+    assert first["before"]["permission"] == "DOWNLOAD"  # type: ignore[index]
+    assert first["after"]["permission"] == "VIEW"  # type: ignore[index]
+    assert set(updated[0]["metadata"]["changed"]) == {"expires_at", "max_accesses"}  # type: ignore[index]
+
+
+def test_edit_access_rules(api: Api) -> None:
+    anyone = _anyone_view(api, document_id="doc-rotate")
+    ana = api.headers("ana@thinknex.example")
+    url = f"/api/v1/shares/{anyone['id']}"
+    assert api.client.patch(url, json={"permission": "EDIT"}, headers=ana).status_code == 422
+    assert api.client.patch(url, json={"permission": "DOWNLOAD"}, headers=ana).status_code == 200
+    bruno = api.headers("bruno@thinknex.example")
+    assert api.client.patch(url, json={"permission": "VIEW"}, headers=bruno).status_code == 404
+    carla = api.headers("carla@thinknex.example")
+    assert api.client.patch(url, json={"permission": "VIEW"}, headers=carla).status_code == 403
+    admin = api.admin_headers()
+    assert api.client.patch(url, json={"permission": "VIEW"}, headers=admin).status_code == 200
+    api.client.post(f"{url}/revoke", headers=ana)
+    assert api.client.patch(url, json={"permission": "DOWNLOAD"}, headers=ana).status_code == 409
+
+
+def test_share_without_watermark(api: Api) -> None:
+    import io
+
+    from pypdf import PdfReader
+
+    share = api.share(watermark=False)
+    assert share["watermark"] is False
+    token = api.last_link_token()
+    auth = {"Authorization": f"Bearer {api.unlock(token)}"}
+    view = api.client.get(f"{ACCESS}/{token}/document", headers=auth).json()
+    assert view["watermark"] is False
+    pdf = api.client.get(f"{ACCESS}/{token}/download", headers=auth)
+    text = PdfReader(io.BytesIO(pdf.content)).pages[0].extract_text()
+    assert "Compartido con" not in text
+    accessed = api.audit(share_id=str(share["id"]), event_type="DOCUMENT_ACCESSED")[0]
+    assert accessed["metadata"]["watermarked"] is False  # type: ignore[index]
+
+    ana = api.headers("ana@thinknex.example")
+    r = api.client.patch(f"/api/v1/shares/{share['id']}", json={"watermark": True}, headers=ana)
+    assert r.json()["watermark"] is True
+    pdf = api.client.get(f"{ACCESS}/{token}/download", headers=auth)
+    assert "Compartido con" in PdfReader(io.BytesIO(pdf.content)).pages[0].extract_text()

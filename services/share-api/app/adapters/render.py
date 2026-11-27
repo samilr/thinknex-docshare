@@ -100,8 +100,8 @@ def _png(image: Image.Image) -> bytes:
     return out.getvalue()
 
 
-def render_page(content: bytes, mime_type: str, page_index: int, stamp: str) -> bytes:
-    """Devuelve la página `page_index` (desde 0) como PNG con marca de agua."""
+def render_page(content: bytes, mime_type: str, page_index: int, stamp: str | None) -> bytes:
+    """Devuelve la página `page_index` (desde 0) como PNG, con marca de agua si hay `stamp`."""
     k = kind(mime_type)
     if k == "pdf":
         image = _render_pdf_page(content, page_index)
@@ -112,7 +112,7 @@ def render_page(content: bytes, mime_type: str, page_index: int, stamp: str) -> 
         image.load()
     else:
         raise UnsupportedPreview("Este tipo de archivo no tiene vista protegida")
-    return _png(_watermark(image, stamp))
+    return _png(_watermark(image, stamp) if stamp else image.convert("RGB"))
 
 
 class _LruCache:

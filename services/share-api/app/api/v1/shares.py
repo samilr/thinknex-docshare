@@ -20,6 +20,7 @@ from app.schemas import (
     ShareListPage,
     ShareOut,
     ShareRequest,
+    ShareUpdate,
 )
 from app.services.share_service import ShareScope
 
@@ -88,6 +89,18 @@ def revoke_share(
     share_id: uuid.UUID, user: RevokerDep, service: ShareServiceDep, ctx: ContextDep
 ) -> ShareOut:
     return service.revoke(user, share_id, ctx)
+
+
+@router.patch("/{share_id}", response_model=ShareOut)
+def update_share(
+    share_id: uuid.UUID,
+    body: ShareUpdate,
+    user: RevokerDep,
+    service: ShareServiceDep,
+    ctx: ContextDep,
+) -> ShareOut:
+    """Edita el acceso (permiso, vencimiento, accesos). Aplica de inmediato y queda auditado."""
+    return service.update(user, share_id, body, ctx)
 
 
 @router.post("/{share_id}/link", response_model=ShareOut)

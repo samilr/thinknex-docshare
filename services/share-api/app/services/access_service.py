@@ -100,6 +100,7 @@ class DocumentView:
     can_download: bool
     can_edit: bool
     viewer_label: str
+    watermark: bool
 
 
 @dataclass(frozen=True)
@@ -395,12 +396,13 @@ class AccessService:
             can_download=permission in (Permission.DOWNLOAD, Permission.EDIT),
             can_edit=permission is Permission.EDIT,
             viewer_label=self._viewer_label(share),
+            watermark=share.watermark,
         )
 
     def page(self, token: str, access_token: str, number: int, ctx: RequestContext) -> bytes:
         share = self._session(token, access_token, ctx)
         data, mime, _, _, _ = self._content(share)
-        stamp = self._stamp(share, "Vista protegida ·")
+        stamp = self._stamp(share, "Vista protegida ·") if share.watermark else None
         try:
             return render.render_page(data, mime, number - 1, stamp)
         except (IndexError, render.UnsupportedPreview) as exc:
@@ -420,7 +422,10 @@ class AccessService:
             self.db.commit()
             raise ForbiddenError("Este enlace es de solo lectura: la descarga no está permitida")
         data, mime, title, version, live = self._content(share)
-        payload, watermarked = apply_watermark(data, mime, self._stamp(share, "Compartido con"))
+        if share.watermark:
+            payload, watermarked = apply_watermark(data, mime, self._stamp(share, "Compartido con"))
+        else:
+            payload, watermarked = data, False
         self._audit(
             share,
             AuditEventType.DOCUMENT_ACCESSED,
