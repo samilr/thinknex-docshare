@@ -11,6 +11,16 @@ Una sola variable decide dónde corre la plataforma y contra qué infraestructur
 El portal muestra en el encabezado una insignia **Local / Híbrido / GCP**, para saber siempre
 contra qué datos se está trabajando.
 
+**IA en cada perfil** ([08-ia.md](08-ia.md)):
+
+| `APP_ENV` | Embeddings | Claude |
+|---|---|---|
+| `local` | De prueba (`EMBEDDINGS_PROVIDER=fake`), sin red | Real si `.env` tiene `ANTHROPIC_API_KEY` |
+| `hybrid` | Vertex AI (credenciales ADC del usuario) | Real (`ANTHROPIC_API_KEY`) |
+| `gcp` | Vertex AI (cuenta de servicio) | Real (secreto `anthropic-api-key`) |
+
+Los fragmentos no se comparten entre perfiles: cada base tiene su índice (`make ai-index`).
+
 ## Cómo se elige
 
 Prioridad (de mayor a menor):
@@ -30,6 +40,7 @@ Prioridad (de mayor a menor):
 | `make demo` | Flujo por API contra localhost | Flujo por API contra la URL pública |
 | `make e2e` | Playwright contra localhost | Playwright contra la URL pública |
 | `make gc` | Retención dentro del contenedor | Ejecuta el Cloud Run Job `docshare-gc` |
+| `make ai-index` | Backfill del índice de IA dentro del contenedor | Ejecuta el Cloud Run Job `docshare-indexer --backfill` |
 
 `make test` siempre usa el Postgres local, sin importar `APP_ENV`.
 

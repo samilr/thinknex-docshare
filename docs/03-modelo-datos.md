@@ -1,8 +1,20 @@
 # 3. Modelo de datos
 
-PostgreSQL 17. Migraciones con Alembic: [`0001_initial.py`](../services/share-api/app/db/migrations/versions/0001_initial.py)
-(dominio y auditoría) y [`0002_auth_roles.py`](../services/share-api/app/db/migrations/versions/0002_auth_roles.py)
-(autenticación, roles y bandeja simulada).
+PostgreSQL 17 con la extensión **pgvector**. Migraciones con Alembic, en
+[`services/share-api/app/db/migrations/versions`](../services/share-api/app/db/migrations/versions):
+
+| Migración | Contenido |
+|---|---|
+| `0001` | Dominio y auditoría |
+| `0002` | Autenticación, roles y bandeja simulada |
+| `0003` | Dominio de demo `thinknex.example` |
+| `0004` | Canal `LINK`, `permission` y `audience` |
+| `0005` y `0006` | Política configurable: `policy_rules` y audiencias |
+| `0007` | `refresh_tokens.impersonator_id` (actuar como otro usuario) |
+| `0008` | `shares.watermark` |
+| `0009` | `shares.token_encrypted` (enlace recuperable) |
+| `0010` | IA: `vector`, `ai_index`, `ai_chunks`, `ai_jobs`, `ai_usage` |
+| `0011` | Asistente: `ai_conversations`, `ai_messages` |
 
 ```mermaid
 erDiagram
@@ -34,6 +46,7 @@ erDiagram
         timestamptz expires_at
         timestamptz revoked_at
         uuid replaced_by "rotación"
+        uuid impersonator_id "ADMIN que actúa como el usuario"
     }
     SIMULATED_MESSAGES {
         uuid id PK
@@ -188,6 +201,11 @@ retención y se apaga con `SIMULATED_INBOX_ENABLED=false`.
 | `PASSWORD_CHANGED` / `PASSWORD_RESET` | USER | Cambio propio o reinicio por un ADMIN |
 | `TOKEN_REUSE_DETECTED` | USER | Refresh token ya rotado presentado de nuevo: sesión revocada |
 
+| `SHARE_UPDATED` | USER | Cambio de permiso, marca de agua, vencimiento o accesos (antes y después) |
+| `SHARE_LINK_VIEWED` | USER | Se volvió a mostrar el enlace (dueño o ADMIN) |
+| `AI_QUERY` | USER | Pregunta al RAG o al asistente: pregunta redactada, herramientas y documentos |
+| `AI_ACTION_PROPOSED` / `AI_ACTION_CONFIRMED` | USER | Propuesta del asistente y su confirmación (la acción en sí la audita su endpoint) |
+
 ### Índices
 
 `shares(token_hash)` único (búsqueda por enlace), `shares(shared_by)`,
@@ -260,3 +278,85 @@ pero sus versiones se conservan. Los envíos activos del archivo se revocan en l
 **`policy_rules`** (migración `0005`): `name` (único), `action` (`WARN | BLOCK`), `message`,
 `classifications[]`, `recipient` (`ANY | INTERNAL | EXTERNAL`), `finding_types[]`, `channels[]`,
 `enabled`, `created_by` y `updated_by`. Una lista vacía significa "cualquiera" (ADR-0011).
+
+
+## Inteligencia artificial (migraciones `0010` y `0011`)
+
+```mermaid
+erDiagram
+    AI_INDEX ||--o{ AI_CHUNKS : "fragmentos"
+    USERS ||--o{ AI_CONVERSATIONS : "conversa"
+    AI_CONVERSATIONS ||--o{ AI_MESSAGES : "mensajes"
+    USERS ||..o{ AI_USAGE : "consume"
+
+    AI_INDEX {
+        bigint id PK
+        string source_document_id "documento del DMS"
+        string sha256 "UK con source_document_id"
+        int version
+        string title
+        string library_id
+        string folder_id
+        string classification
+        bool is_current "versión vigente"
+        string status "PENDING | INDEXED | EMPTY | SKIPPED | FAILED"
+        int chunk_count
+        string embedding_model
+    }
+    AI_CHUNKS {
+        bigint id PK
+        bigint index_id FK
+        int chunk_index
+        int page_from
+        int page_to
+        text text
+        vector embedding "768 dims, índice HNSW coseno"
+        tsvector tsv "to_tsvector('spanish', text), índice GIN"
+    }
+    AI_JOBS {
+        bigint id PK
+        string source_document_id "un PENDING por documento"
+        string status
+        int attempts
+        string last_error
+    }
+    AI_USAGE {
+        bigint id PK
+        uuid user_id
+        string feature "ask | assistant"
+        string model
+        int input_tokens
+        int output_tokens
+        int cache_read_tokens
+        int latency_ms
+    }
+    AI_CONVERSATIONS {
+        uuid id PK
+        uuid user_id FK
+        string title
+        text[] pending_notes "resultado de propuestas para el próximo turno"
+    }
+    AI_MESSAGES {
+        bigint id PK
+        uuid conversation_id FK
+        string role "user | assistant"
+        jsonb content "transcript de la API"
+        jsonb display "versión visible (nulo en pasos internos)"
+    }
+```
+
+- **`ai_index`:** una fila por versión (sha256) de cada documento.
+  - La vigente tiene `is_current`.
+  - Las anteriores se conservan para los snapshots compartidos.
+  - Los metadatos (título, carpeta, clasificación) se usan para filtrar por permisos y alcance en
+    la misma consulta de recuperación.
+- **`ai_chunks`:** el texto de cada fragmento con su página, su embedding y su `tsvector`. Así la
+  búsqueda híbrida es una sola base y una sola transacción.
+- **`ai_jobs`:** outbox de sincronización. El índice parcial único
+  `(source_document_id) WHERE status='PENDING'` evita duplicados.
+- **`ai_conversations` / `ai_messages`:** solo las ve su dueño. `content` permite continuar la
+  conversación con el modelo y `display` es lo que muestra el portal (texto, citas, fuentes, pasos y
+  propuestas con su estado). Se purgan a los 30 días sin uso.
+- **`ai_usage`:** costo y presupuesto diario por usuario.
+
+Detalle funcional en [08-ia.md](08-ia.md).

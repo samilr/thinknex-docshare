@@ -29,3 +29,8 @@ La decisión final (`ALLOW`, `WARN` o `BLOCK`) la toma una política explícita 
 ## Consecuencias
 Con la IA desactivada (por defecto) la solución es completa. Activarla requiere evaluar con el
 área legal el envío de texto, aunque esté redactado, a un proveedor externo.
+
+## Actualización
+Esta decisión sigue vigente para la sensibilidad: la IA solo advierte. Más adelante, la IA se
+amplió a búsqueda y respuestas con citas (ADR-0013) y a un asistente agéntico que solo propone
+acciones (ADR-0014).

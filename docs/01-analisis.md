@@ -73,7 +73,14 @@ el **supuesto** indicado en la tabla, que siempre es la opción más conservador
 **Prioridad 2 (incluido, opcional)**
 - Clasificación de sensibilidad asistida por LLM (Claude), detrás de un flag.
 
+**Ampliaciones posteriores (incluidas)**
+- **Portal web** con roles y explorador tipo SharePoint (ADR-0008, ADR-0009).
+- **Visor en línea** con permisos Ver, Descargar o Editar, y enlaces de ThinkNex Docs (ADR-0010).
+- **Política configurable** por el administrador (ADR-0011).
+- **Actuar como otro usuario**, auditado (ADR-0012).
+- **IA:** búsqueda y preguntas con citas (RAG) y asistente agéntico que solo propone acciones
+  (ADR-0013, ADR-0014, [08-ia.md](08-ia.md)).
+
 **Fuera de alcance (ver [05-limitaciones-y-roadmap.md](05-limitaciones-y-roadmap.md))**
-- Frontend completo para usuarios internos (se usa Swagger).
 - Integración real con WhatsApp Business o un proveedor SMS (se simula).
-- SSO real, flujo de aprobación y visor en línea sin descarga.
+- SSO real y flujo de aprobación.

@@ -25,6 +25,12 @@ documento se comparte **de forma segura**, que es lo difícil del problema.
 | **Explorador tipo SharePoint** (bibliotecas, carpetas, subida, versiones, visor, personas con acceso) | ✅ | Portal → Documentos |
 | Administración de usuarios y roles | ✅ | Portal → Usuarios (ADMIN) |
 | Bandeja simulada (enlaces y OTP) | ✅ | Portal → Bandeja simulada (ADMIN) |
+| Política configurable por el ADMIN | ✅ | Portal → Políticas (ADR-0011) |
+| Editar acceso, ver enlace de nuevo, marca de agua opcional | ✅ | Detalle del envío o *Personas con acceso* |
+| Actuar como otro usuario (auditado) | ✅ | Portal → Usuarios → *Actuar como este usuario* (ADR-0012) |
+| **Índice de IA** (pgvector + Vertex AI) | ✅ | Panel del archivo → *Detalles → Índice de IA*; `make ai-index` |
+| **Buscar y preguntar con citas (RAG)** | ✅ | `GET /api/v1/ai/search`, `POST /api/v1/ai/ask` |
+| **Asistente agéntico** con conversaciones guardadas | ✅ | Botón flotante, botón *Asistente* en cada documento y página *Asistente* ([08-ia.md](08-ia.md)) |
 | Despliegue en GCP | ✅ | [06-despliegue-gcp.md](06-despliegue-gcp.md) |
 
 ## 4.2 Ejecución
@@ -116,7 +122,21 @@ Terraform (ver el README).
    al tocar sus indicadores, y el admin también ve *Auditoría*.
 6. Como **admin** → *Usuarios* → *Nuevo usuario*. La contraseña temporal se muestra una sola vez y
    el nuevo usuario debe cambiarla al entrar.
-7. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
+7. **Asistente de IA** (requiere `ANTHROPIC_API_KEY`):
+   - Como **ana**, el botón flotante morado (abajo a la derecha) abre el chat. Preguntar "¿Qué
+     planes ofrece el catálogo de productos 2026?":
+     - se ven los pasos ("Buscó…");
+     - cada afirmación lleva una cita `[1]` que abre el documento en la página citada.
+   - Pedir "Prepara un enlace de solo lectura de ese catálogo para prospectos":
+     - el asistente revisa la política y deja una **propuesta**;
+     - *Revisar y compartir* abre el asistente de compartir ya completado. Nada se comparte sin
+       confirmar.
+   - En *Documentos*, el ícono ✦ de cada archivo (o el botón *Asistente* del panel) abre el chat con
+     sugerencias como "Resume este documento".
+   - La página *Asistente* muestra las conversaciones guardadas, como en Claude o ChatGPT.
+   - Como **carla**, el asistente solo usa herramientas de auditoría ("¿Hubo intentos bloqueados
+     esta semana?").
+8. Entrar como **carla** → *Auditoría*: banner "Cadena íntegra", filtro por `doc-006` y
    exportación a CSV. Aparecen `ACCESS_GRANTED`, `DOCUMENT_VIEWED`, `DOCUMENT_VERSION_UPLOADED`
    (actor destinatario) y `SHARE_LINK_ROTATED`.
 
@@ -139,23 +159,28 @@ Terraform (ver el README).
 
 ```bash
 # en .env
-SENSITIVITY_LLM_ENABLED=true
-ANTHROPIC_API_KEY=<tu clave>
-docker compose up -d share-api
+ANTHROPIC_API_KEY=<tu clave>           # asistente, preguntas con citas
+SENSITIVITY_LLM_ENABLED=true           # además, sensibilidad asistida al compartir
+# Embeddings: en local se usan de prueba; para Vertex AI real:
+# EMBEDDINGS_PROVIDER=vertex  VERTEX_PROJECT=<proyecto>  (y gcloud auth application-default login)
+make up && make ai-index
 ```
 
-`POST /api/v1/shares/precheck` devolverá `engine: "rules+llm"` y el bloque `llm` con la
-sensibilidad, las categorías y una justificación. Si la API no responde, el sistema degrada a
-`engine: "rules (llm no disponible)"` sin fallar.
+- Con la clave aparecen el botón flotante y la página *Asistente*.
+- `POST /api/v1/shares/precheck` devuelve `engine: "rules+llm"`. Si la API no responde, el sistema
+  degrada a `rules (llm no disponible)` sin fallar.
+- Arquitectura, seguridad, costos y operación de la IA: [08-ia.md](08-ia.md).
 
 ## 4.5 Tests
 
 | Suite | Qué cubre |
 |---|---|
-| `document-api/tests` (15) | API key, bibliotecas y carpetas, migas de pan, hash publicado = contenido, versiones, conflicto de nombre, **magic bytes**, límite de tamaño, nombre seguro, DOCX por estructura |
-| `share-api/tests/unit` (47) | Detectores (RUT con dígito verificador, Luhn, solapamientos), matriz de política, **política de enlaces y permisos**, IA solo advierte, redacción antes del LLM, JWT con tipos, OTP ligado al share, marca de agua, **render de páginas a PNG**, hash canónico, redacción de logs, selección de adaptadores, secretos débiles rechazados |
+| `document-api/tests` (20) | Eliminación lógica, reclasificación y renombrado con conflicto; API key, bibliotecas y carpetas, migas de pan, hash publicado = contenido, versiones, conflicto de nombre, **magic bytes**, límite de tamaño, nombre seguro, DOCX por estructura |
+| `share-api/tests/unit` (55) | **Fragmentación y extracción (PDF, DOCX, XLSX) para IA, embeddings de prueba**, reglas configurables (gana la más restrictiva, canal y audiencia), cifrado del enlace; detectores (RUT con dígito verificador, Luhn, solapamientos), matriz de política, **política de enlaces y permisos**, IA solo advierte, redacción antes del LLM, JWT con tipos, OTP ligado al share, marca de agua, **render de páginas a PNG**, hash canónico, redacción de logs, selección de adaptadores, secretos débiles rechazados |
 | `share-api/tests/integration` (30) | Flujo E2E con el visor, 409/403 por sensibilidad, bloqueo por OTP, límite de accesos, revocación, expiración, roles, retención, **trigger append-only**, **detección de manipulación**; login, bloqueo de cuenta, **rotación de refresh con detección de reutilización**, cambio obligatorio de contraseña, desactivación inmediata; administración de usuarios, visibilidad por rol, bandeja e indicadores |
 | `share-api/tests/integration` biblioteca (7) | Navegación, subida con hallazgos, conflicto y nueva versión, vista interna con marca de agua auditada, personas con acceso y actividad, roles, contenido inválido |
+| `share-api/tests/integration` IA (11) | Índice por eventos (subir, renombrar, reclasificar, eliminar, versión nueva) y backfill; búsqueda híbrida con alcance y roles; **preguntas con citas, redacción antes del LLM, auditoría y presupuesto**; **asistente**: busca y cita, historial, propuestas que no ejecutan, notas del resultado, herramientas por rol |
+| `share-api/tests/integration` políticas, administración y envíos (21) | CRUD de reglas con auditoría del antes y el después, relajar o desactivar reglas, regla por canal y por audiencia; biblioteca del ADMIN (reclasificar, eliminar con revocación); **actuar como otro usuario**; editar acceso, ver enlace de nuevo y marca de agua opcional |
 | `share-api/tests/integration` enlaces (8) | Enlace para cualquiera de solo lectura (páginas PNG, descarga 403), bloqueo con datos personales, reglas de audiencia y permiso, código por email, **edición del archivo vivo auditada como destinatario**, regeneración del enlace, límite de sesiones, sesión ligada a su envío |
-| `web` Vitest (18) | Guardas de sesión y rol, login, contraseña temporal, asistente de compartir (incluido el enlace para cualquiera), **visor del destinatario** (solo lectura, código y edición, enlace no disponible), explorador, CSV, recuperación de chunks |
-| `web/e2e` Playwright (3) | En el navegador contra el stack real: navegar, subir, abrir, compartir desde el panel, recibir, ver en el visor, descargar y auditar; **enlace de solo lectura para cualquiera y regeneración**; recuperación tras un despliegue |
+| `web` Vitest (29) | **Asistente** (botón flotante, streaming, citas, propuesta confirmada, historial), políticas, resumen navegable, administración de archivos; guardas de sesión y rol, login, contraseña temporal, asistente de compartir (incluido el enlace para cualquiera), **visor del destinatario** (solo lectura, código y edición, enlace no disponible), explorador, CSV, recuperación de chunks |
+| `web/e2e` Playwright (7) | En el navegador contra el stack real: navegar, subir, renombrar, compartir, recibir, ver, descargar y auditar, y el ADMIN elimina el archivo de prueba; enlace de solo lectura para cualquiera y regeneración; **actuar como otro usuario**; menú contraíble y cursor; recuperación tras un despliegue; **asistente con IA real** (citas, conversación guardada y botón del documento) |

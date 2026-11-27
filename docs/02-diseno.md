@@ -5,36 +5,45 @@
 ```mermaid
 flowchart LR
     subgraph Interno["Organización"]
-        U["Usuario interno<br/>(SHARER / AUDITOR)"]
+        U["Usuario interno<br/>(ADMIN / SHARER / AUDITOR)"]
+        WEB["web<br/>(React + nginx, mismo origen)"]
         subgraph SA["share-api (FastAPI)"]
-            API["API v1<br/>shares · audit · documents"]
+            API["API v1<br/>biblioteca · shares · políticas ·<br/>auditoría · usuarios · IA"]
             PUB["API del destinatario<br/>/api/v1/access/{token}"]
-            SVC["Servicios<br/>share · access · audit · retention"]
-            SENS["Sensibilidad<br/>reglas + LLM opcional"]
+            SVC["Servicios<br/>share · access · library · policy ·<br/>audit · retention"]
+            SENS["Sensibilidad<br/>reglas configurables + IA"]
+            AI["IA (app/ai)<br/>índice · RAG · asistente"]
         end
         DMS["document-api<br/>(DMS existente, simulado)"]
-        PG[("PostgreSQL<br/>shares · auditoría")]
-        S3[("Object storage S3<br/>snapshots por sha256")]
+        PG[("PostgreSQL + pgvector<br/>shares · auditoría · índice IA")]
+        S3[("Object storage<br/>snapshots por sha256")]
+        JOBS["Cloud Run Jobs<br/>migrate · gc · indexer"]
     end
     subgraph Canales
-        MAIL["Email (SMTP)"]
+        MAIL["Email (SMTP / Resend)"]
         WA["WhatsApp (simulado)"]
         SMS["SMS (simulado)"]
     end
     R["Destinatario<br/>(sin cuenta)"]
-    LLM["Claude API<br/>(opcional, texto redactado)"]
+    LLM["Claude API<br/>(texto redactado)"]
+    VX["Vertex AI<br/>embeddings"]
 
-    U -- "JWT (OIDC en prod)" --> API
+    U --> WEB -- "/api + JWT" --> API
     API --> SVC
+    API --> AI
     PUB --> SVC
-    SVC -- "X-API-Key" --> DMS
+    SVC -- "X-API-Key + IAM" --> DMS
     SVC --> PG
     SVC --> S3
     SVC --> SENS
-    SENS -. "flag" .-> LLM
+    SENS -.-> LLM
+    AI --> PG
+    AI -- "embeddings" --> VX
+    AI -- "respuestas con citas,<br/>tool use" --> LLM
+    JOBS --> PG
     SVC -- "solo enlace / OTP" --> MAIL & WA & SMS
     MAIL & WA & SMS --> R
-    R -- "enlace + OTP" --> PUB
+    R -- "enlace (+ OTP)" --> PUB
 ```
 
 **Estilo:** monolito modular (un servicio, capas separadas) más el DMS como sistema externo. Es
@@ -53,7 +62,10 @@ ADR-0001).
 | `AccessService` | Abrir enlace, OTP o apertura directa, sesión de acceso con consumo atómico, vista protegida, descarga y nuevas versiones según el permiso | `app/services/access_service.py` |
 | `audit_service` | Auditoría append-only con cadena de hashes, consultas y verificación | `app/services/audit_service.py` |
 | `retention_service` | Vencer shares y purgar snapshots sin uso | `app/services/retention_service.py` |
-| Sensibilidad | Detectores (RUT, email, teléfono, tarjeta, cuenta), política y LLM opcional | `app/sensitivity/` |
+| `library_service` | Biblioteca para el portal: navegar, subir, versionar, renombrar, reclasificar, eliminar (revoca envíos), personas con acceso y actividad | `app/services/library_service.py` |
+| `policy_service` | Reglas de la política de compartición editables por el ADMIN, con auditoría del antes y el después (ADR-0011) | `app/services/policy_service.py` |
+| Sensibilidad | Detectores (RUT, email, teléfono, tarjeta, cuenta), motor de reglas (gana la más restrictiva) y LLM que solo advierte | `app/sensitivity/` |
+| IA | Índice (extracción, fragmentos, embeddings), recuperación híbrida con permisos, respuestas con citas y asistente agéntico con herramientas (ADR-0013, ADR-0014, [08-ia.md](08-ia.md)) | `app/ai/` |
 | Adaptadores | DMS (HTTP), storage (S3), canales (SMTP y mocks), marca de agua (PDF) y render de páginas a PNG | `app/adapters/` |
 | Composition root | Arma las dependencias concretas. Los tests inyectan fakes | `app/container.py` |
 
@@ -161,8 +173,12 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
 | **Respuesta uniforme a denegaciones** | Mensajes específicos | Evita enumerar enlaces. El detalle queda en la auditoría |
 | **Abrir el enlace no consume accesos; iniciar la sesión sí** | Consumir al abrir | Los previsualizadores de email y WhatsApp abren los enlaces automáticamente. Solo la verificación o la apertura explícita cuentan |
 | **Vista protegida renderizada en el servidor** (ADR-0010) | Visor PDF en el navegador con descarga oculta | Con permiso Ver el archivo nunca llega al cliente: solo imágenes con marca de agua |
-| **El enlace se muestra una sola vez y se puede regenerar** (ADR-0010) | Guardar el enlace para volver a mostrarlo | Solo se guarda el hash del token. Regenerar invalida el anterior y queda auditado |
+| **Enlace recuperable cifrado y regenerable** (ADR-0010) | Guardar el enlace en claro; o no poder verlo de nuevo | Se busca por hash y se guarda cifrado (AES-GCM, clave fuera de la BD). Verlo de nuevo y regenerarlo quedan auditados |
 | **IA solo puede advertir, nunca bloquear** (ADR-0005) | Decisión automática por LLM | Un falso positivo no debe impedir trabajar. La persona decide con la información a la vista |
+| **Política como reglas en BD editables por el ADMIN** (ADR-0011) | Matriz fija en el código | La organización ajusta sin desplegar. Gana la regla más restrictiva y cada cambio se audita |
+| **RAG en Postgres con pgvector + Vertex AI, búsqueda híbrida y citas nativas** (ADR-0013) | Base vectorial dedicada; citas pedidas por prompt | Permisos en el mismo SQL, sin otra pieza que operar. Las citas apuntan a bloques reales |
+| **Asistente con herramientas propias; acciones solo como propuestas** (ADR-0014) | Agente que ejecuta acciones; Managed Agents | Las herramientas deben correr con los permisos del usuario. Un clic humano es la frontera ante prompt injection |
+| **Actuar como otro usuario, auditado** (ADR-0012) | Contraseñas compartidas para probar | Trazabilidad: todo queda a nombre del usuario con `impersonated_by` |
 | **SQLAlchemy síncrono** | async | boto3 y smtplib son síncronos. El threadpool de FastAPI basta para el volumen esperado |
 | **Problem Details (RFC 7807)** | Errores ad hoc | Contrato de errores estándar y extensible (`report`, `remaining_attempts`) |
 
@@ -178,6 +194,20 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
 - **Visor del destinatario** en `/s/{token}`, fuera de la sesión interna (ADR-0010): verificación
   con código o apertura directa, páginas con marca de agua y zoom, **Descargar** solo si el permiso
   lo permite y **Subir nueva versión** con permiso de edición.
+- **Asistente de IA** (ADR-0014):
+  - botón flotante en todas las pantallas, con el chat en un panel lateral y sugerencias según el
+    contexto;
+  - botón en cada documento;
+  - página *Asistente* con conversaciones guardadas;
+  - respuestas con citas que abren el documento en la página citada y propuestas de acción que se
+    confirman.
+- **Administración:**
+  - *Políticas* (crear, editar, desactivar, eliminar reglas);
+  - *Usuarios*, con **actuar como otro usuario** (ADR-0012);
+  - *Auditoría* (también para el ADMIN);
+  - *Bandeja simulada*.
+- **Envíos:** editar el acceso (permiso, marca de agua, vencimiento, accesos), ver de nuevo el
+  enlace y marca de agua opcional.
 - **Autenticación propia** con roles ADMIN, SHARER y AUDITOR, y refresh token rotativo (ADR-0007).
 - **Despliegue en GCP:** Cloud Run, Cloud SQL, Cloud Storage y Secret Manager con Terraform (ADR-0006, [06-despliegue-gcp.md](06-despliegue-gcp.md)).
 
@@ -192,3 +222,13 @@ afuera (`404 link_unavailable`), y la causa real queda en la auditoría (`ACCESS
   no-referrer` y CSP sin scripts en línea.
 - **Contenedores** sin root, con imágenes multi-stage y healthchecks.
 - **Integridad** del contenido verificada dos veces: al leer del DMS y al servir el snapshot.
+- **IA:**
+  - permisos aplicados en la recuperación;
+  - datos personales redactados antes de enviar al LLM;
+  - documentos tratados como datos (defensa ante prompt injection);
+  - acciones solo como propuestas confirmadas por un humano;
+  - presupuesto diario por usuario.
+
+  Detalle en [08-ia.md](08-ia.md#86-seguridad-privacidad-y-gobierno).
+- **Transacciones:** la sesión de BD confirma antes de enviar la respuesta (`scope="function"`). Un
+  cliente nunca lee un estado sin confirmar, ni recibe un 2xx de algo que falló al confirmarse.

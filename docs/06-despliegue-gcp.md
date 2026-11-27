@@ -9,14 +9,14 @@ deploy (`scripts/deploy.sh`). Todo es reproducible y se puede destruir con un co
 flowchart LR
     U["Usuarios internos<br/>y destinatarios"] -- HTTPS --> WEB
     subgraph GCP["Proyecto GCP · southamerica-west1 (Santiago)"]
-        WEB["Cloud Run · web<br/>nginx: SPA + proxy /api, /s"]
+        WEB["Cloud Run · web<br/>nginx: SPA + proxy /api"]
         SA["Cloud Run · share-api<br/>FastAPI"]
         DMS["Cloud Run · document-api<br/>(solo invocable por share-api)"]
-        SQL[("Cloud SQL<br/>Postgres 17")]
+        SQL[("Cloud SQL<br/>Postgres 17 + pgvector")]
         GCS[("Cloud Storage<br/>snapshots · dms")]
         SM["Secret Manager"]
-        JOBS["Cloud Run Jobs<br/>migrate · gc"]
-        SCH["Cloud Scheduler<br/>diario 04:00"]
+        JOBS["Cloud Run Jobs<br/>migrate · gc · indexer"]
+        SCH["Cloud Scheduler<br/>gc diario 04:00 · indexer cada 10 min"]
         AR["Artifact Registry"]
     end
     WEB -- "HTTPS (TLS verificado)" --> SA
@@ -27,7 +27,8 @@ flowchart LR
     SA -. secretos .-> SM
     SCH --> JOBS --> SQL
     SA -. "opcional" .-> RESEND["Resend (email real)"]
-    SA -. "opcional" .-> CLAUDE["Claude API (sensibilidad)"]
+    SA -- "embeddings (IAM)" --> VX["Vertex AI<br/>southamerica-east1"]
+    SA -- "API key (Secret Manager)" --> CLAUDE["Claude API<br/>asistente · RAG · sensibilidad"]
 ```
 
 | Pieza | Decisión | Por qué |
@@ -39,7 +40,11 @@ flowchart LR
 | Secretos | Generados por Terraform (`random_password`) en Secret Manager | Nada en el código ni en las imágenes; cada servicio lee solo lo suyo |
 | Identidades | Una cuenta de servicio por componente, sin llaves JSON | Mínimo privilegio; CI con Workload Identity Federation |
 | Migraciones | Cloud Run Job ejecutado antes de desplegar | Evita que varias instancias migren a la vez |
-| Retención | Job `gc` diario + regla de ciclo de vida de 30 días en el bucket | Doble protección contra copias olvidadas |
+| Retención | Job `gc` diario + regla de ciclo de vida de 30 días en el bucket | Doble protección contra copias olvidadas; también purga conversaciones del asistente sin uso por 30 días |
+| IA: vectores | pgvector en la misma Cloud SQL (`CREATE EXTENSION vector` en la migración `0010`) | Sin otra base que operar; permisos en el mismo SQL (ADR-0013) |
+| IA: embeddings | Vertex AI `gemini-embedding-001` en `southamerica-east1`, rol `aiplatform.user` para la cuenta de share-api | Sin llaves; el modelo no está en Santiago |
+| IA: indexación | Tarea tras cada cambio + Cloud Run Job `docshare-indexer` cada 10 minutos (y `--backfill` tras cada despliegue) | Resiliente a reinicios de instancias; idempotente |
+| IA: Claude | `anthropic_api_key` en `demo.tfvars` → secreto `anthropic-api-key` → variable `ANTHROPIC_API_KEY` | La clave nunca queda en el código ni en las imágenes |
 
 ## 6.2 Requisitos
 
@@ -79,6 +84,21 @@ La primera vez, Terraform crea los servicios con una imagen de ejemplo de Google
 `deploy.sh` la reemplaza por las imágenes reales. En adelante, Terraform ignora la imagen: los
 despliegues de código no tocan la infraestructura y viceversa.
 
+### Repositorio en GitHub y secretos
+
+El código público está en GitHub. Nada sensible se versiona:
+- `.env`, `.env.hybrid`, `demo.tfvars` y el estado de Terraform están ignorados (`.gitignore`);
+- `.env.example` solo trae valores locales de demostración.
+
+Los valores de configuración del entorno se guardan como **secretos del repositorio**
+(`gh secret set`):
+- `ANTHROPIC_API_KEY`;
+- los valores locales de `.env` (`POSTGRES_PASSWORD`, `JWT_SECRET`, `OTP_SECRET`, `S3_*`,
+  `DMS_API_KEY`, `BOOTSTRAP_ADMIN_PASSWORD`, `DEMO_USERS_PASSWORD`).
+
+Así quedan disponibles para los workflows sin estar en el código. Los secretos de producción los
+genera Terraform y viven en Secret Manager.
+
 ### Despliegue continuo (opcional)
 
 Con `github_repository = "owner/repo"` en `demo.tfvars`, Terraform crea el pool de Workload Identity
@@ -91,7 +111,9 @@ Desde ese momento, `.github/workflows/deploy.yml` despliega en cada push a `main
 | Variable de `demo.tfvars` | Efecto |
 |---|---|
 | `resend_api_key`, `email_from` | Email real con Resend. El remitente debe estar en un dominio verificado; si no, Resend solo entrega al dueño de la cuenta |
-| `anthropic_api_key` | Activa el chequeo de sensibilidad con Claude |
+| `anthropic_api_key` | Activa el asistente, las preguntas con citas y la sensibilidad asistida con Claude ([08-ia.md](08-ia.md)) |
+| `ai_enabled = false` | Apaga toda la IA (índice, búsqueda y asistente) |
+| `vertex_location` | Región de Vertex AI para embeddings (por defecto `southamerica-east1`) |
 | `simulated_inbox_enabled = false` | Apaga la bandeja simulada; recomendado fuera de la demo |
 | `demo_users_enabled = false` | No crea los usuarios ficticios |
 
@@ -102,6 +124,8 @@ Cloud SQL y Cloud Storage) existe el perfil `APP_ENV=hybrid`: ver [07-entornos.m
 
 - **Logs:** Cloud Logging, en JSON con `request_id`; los tokens de enlace aparecen como `/s/***`. Filtro útil: `resource.labels.service_name="docshare-share-api"`.
 - **Retención manual:** `gcloud run jobs execute docshare-gc --region southamerica-west1 --wait`.
+- **Índice de IA:** `make ai-index APP_ENV=gcp`, que ejecuta `docshare-indexer --backfill`. El estado
+  por documento está en el panel del archivo (*Detalles → Índice de IA*).
 - **Rotar un secreto:** `gcloud secrets versions add docshare-jwt-secret --data-file=-` y después redesplegar `share-api`. Los servicios leen la versión `latest` al arrancar. Rotar `jwt-secret` invalida los access tokens vigentes, y quienes estén conectados vuelven a entrar con su refresh token.
 - **Estado de Terraform:** `gs://<PROJECT_ID>-tfstate`, privado y versionado. Contiene los secretos generados, así que el acceso a ese bucket debe tratarse como acceso a los secretos.
 
@@ -111,6 +135,8 @@ Cloud SQL y Cloud Storage) existe el perfil `APP_ENV=hybrid`: ver [07-entornos.m
 |---|---|
 | Cloud SQL `db-f1-micro` + 10 GB SSD + backups | US$9–12 |
 | Cloud Run (escala a cero), Storage, Secret Manager, Registry, Scheduler | < US$2 |
+| Vertex AI embeddings (miles de fragmentos) | Centavos |
+| Claude (según uso; ~US$0,005 por pregunta, más en turnos del asistente con herramientas) | Variable, acotado por el presupuesto diario por usuario |
 
 Cuando la demo ya no se necesite:
 

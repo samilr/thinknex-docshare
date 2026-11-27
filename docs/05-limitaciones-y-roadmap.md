@@ -19,6 +19,11 @@
 | Cloud SQL con IP pública (restringida al conector) | Superficie de red mayor que una IP privada | IP privada con Direct VPC egress |
 | El snapshot no está cifrado a nivel de aplicación | Depende del cifrado en reposo del proveedor S3 | SSE-KMS en el bucket, o cifrado envolvente por documento |
 | Portal propio, separado del DMS | El usuario cambia de sistema para compartir | Integrar un botón "Compartir" dentro del DMS que abra el asistente |
+| IA: PDF escaneados e imágenes sin OCR | Quedan `EMPTY` en el índice: el asistente no puede citarlos | OCR con visión de Claude Haiku o Document AI en el indexador |
+| IA: calidad sin evals automatizadas | La calidad se verificó con pruebas y E2E reales, no con métricas | Conjunto de preguntas de oro: recall@k, exactitud de citas, fidelidad (juez LLM), rechazo y fuga de permisos = 0 ([08-ia.md](08-ia.md#811-pendiente)) |
+| IA: las respuestas pueden equivocarse | Un resumen puede omitir matices | Citas obligatorias que abren la página fuente, aviso en el chat y acciones solo como propuestas confirmadas |
+| IA: embeddings en São Paulo | Los textos salen de Santiago (dentro del mismo proyecto GCP) | Cambiar `VERTEX_LOCATION` cuando el modelo esté en `southamerica-west1` |
+| IA: el visor del destinatario aún no tiene preguntas | Solo los usuarios internos usan el asistente | Preguntas acotadas al snapshot compartido, con una opción por envío (planificado) |
 
 ## Roadmap sugerido (por valor)
 
@@ -28,15 +33,22 @@
 3. **Integración real de WhatsApp Business y SMS** con webhooks de estado de entrega (`delivered`,
    `read`) agregados a la auditoría.
 4. **Flujo de aprobación** para `RESTRICTED` y `CONFIDENTIAL` hacia externos (en vez de solo advertir).
-5. **Visor en línea** sin descarga para documentos sensibles.
+5. **IA, siguientes pasos** ([08-ia.md](08-ia.md#811-pendiente)):
+   - preguntas del destinatario sobre su documento;
+   - sugerencia de clasificación al subir;
+   - políticas desde lenguaje natural;
+   - explicación de la auditoría con anomalías;
+   - evals de RAG y OCR.
 6. **Reportes de auditoría** (export CSV y firmado) y alertas ante patrones anómalos: muchos
    `ACCESS_DENIED`, accesos desde países inesperados.
 7. **Anclaje del hash de la cadena** (diario) en un almacenamiento inmutable (S3 Object Lock).
 
 ## Lo que deliberadamente NO se hizo
 
-- **RAG sobre los documentos o agentes conversacionales.** No responden a la necesidad planteada.
-  La IA se usó donde aporta un control de seguridad concreto (ADR-0005) y queda desactivada por
-  defecto.
+- **IA que decide sola.**
+  - En la primera versión la IA solo se usó como control de seguridad (ADR-0005).
+  - Después se agregaron RAG con citas y un asistente agéntico (ADR-0013, ADR-0014), con una regla
+    fija: la IA nunca ejecuta acciones. Propone, y un humano confirma por los endpoints normales.
+  - Tampoco se usa la IA para bloquear: solo advierte.
 - **Microservicios, colas o Kubernetes.** Desproporcionados para el problema (ADR-0001). El despliegue
   usa Cloud Run, que escala a cero (ADR-0006).
