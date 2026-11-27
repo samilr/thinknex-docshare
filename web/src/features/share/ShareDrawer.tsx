@@ -191,12 +191,7 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
                 modals.openConfirmModal({
                   title: "Generar nuevo enlace",
                   zIndex: 400,
-                  children: (
-                    <Text size="sm">
-                      Se creará un enlace nuevo y el actual dejará de funcionar de inmediato. Úsalo
-                      si perdiste el enlace o si se compartió con quien no debía.
-                    </Text>
-                  ),
+                  children: <Text size="sm">El enlace actual dejará de funcionar.</Text>,
                   labels: { confirm: "Generar", cancel: "Cancelar" },
                   onConfirm: () => rotate.mutate(),
                 })
@@ -215,10 +210,7 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
                 modals.openConfirmModal({
                   title: "Revocar envío",
                   children: (
-                    <Text size="sm">
-                      El enlace dejará de funcionar de inmediato para {recipientName}. Esta acción
-                      queda auditada y no se puede deshacer.
-                    </Text>
+                    <Text size="sm">El enlace dejará de funcionar para {recipientName}.</Text>
                   ),
                   labels: { confirm: "Revocar", cancel: "Cancelar" },
                   confirmProps: { color: "red" },

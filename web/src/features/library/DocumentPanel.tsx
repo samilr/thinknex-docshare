@@ -150,7 +150,7 @@ export function DocumentPanel({
   onShare: (doc: LibraryDocument) => void;
   onNewVersion: (documentId: string) => void;
   onEdit: (doc: LibraryDocument) => void;
-  /** Si el usuario puede eliminar este archivo. */
+
   onDelete: (doc: LibraryDocument) => boolean;
   confirmDelete: (doc: LibraryDocument) => void;
   canShare: boolean;
@@ -309,10 +309,6 @@ export function DocumentPanel({
                 mime={doc.mime_type}
                 version={version}
               />
-              <Text size="xs" c="dimmed" mt={6}>
-                La vista interna incluye una marca de agua con tu usuario y queda registrada en la
-                auditoría.
-              </Text>
             </Tabs.Panel>
 
             <Tabs.Panel value="details" pt="md">

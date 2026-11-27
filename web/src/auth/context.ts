@@ -6,7 +6,7 @@ export type Role = "ADMIN" | "SHARER" | "AUDITOR";
 export interface AuthState {
   status: "loading" | "authenticated" | "anonymous";
   user: Me | null;
-  /** true tras un logout explícito: al volver a entrar se parte desde el inicio. */
+
   loggedOut: boolean;
   login: (email: string, password: string) => Promise<Me>;
   logout: () => Promise<void>;

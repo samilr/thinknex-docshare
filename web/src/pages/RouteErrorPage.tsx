@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 import { isChunkLoadError, reloadOnceForNewVersion } from "../lib/staleChunks";
 
-/** Pantalla de error de ruta: recupera solo las versiones viejas y explica el resto. */
 export function RouteErrorPage() {
   const error = useRouteError();
   const staleVersion = isChunkLoadError(error);
@@ -42,7 +41,7 @@ export function RouteErrorPage() {
         </Title>
         <Text c="dimmed">
           {staleVersion
-            ? "Se publicó una versión nueva mientras tenías esta pestaña abierta. Recarga para continuar."
+            ? "Hay una versión nueva del portal. Recarga para continuar."
             : "Recarga la página. Si el problema persiste, vuelve al inicio."}
         </Text>
         {detail && !staleVersion && (

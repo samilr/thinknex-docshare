@@ -21,7 +21,7 @@ import { hasLength, useForm } from "@mantine/form";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { IconInfoCircle, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { api, problemMessage, type Schemas, unwrap } from "../api/client";
 import { useAuth } from "../auth/context";
@@ -67,7 +67,6 @@ function ActionBadge({ action }: { action: string }) {
   );
 }
 
-/** Resumen de las condiciones de una regla en lenguaje natural. */
 function Conditions({ rule }: { rule: Rule }) {
   const parts = [
     rule.classifications.length
@@ -167,7 +166,7 @@ function RuleForm({ rule, onClose }: { rule: Rule | "new"; onClose: () => void }
           {...form.getInputProps("message")}
         />
         <Text size="sm" fw={600} mt="xs">
-          Condiciones (vacío = cualquiera)
+          Condiciones
         </Text>
         <MultiSelect
           label="Clasificación del documento"
@@ -192,7 +191,6 @@ function RuleForm({ rule, onClose }: { rule: Rule | "new"; onClose: () => void }
         </div>
         <MultiSelect
           label="Datos detectados en el documento"
-          description="La regla aplica si contiene al menos uno de ellos"
           placeholder="No importa"
           data={FINDING_OPTIONS}
           comboboxProps={{ zIndex: 500 }}
@@ -267,7 +265,6 @@ export function PoliciesPage() {
     <>
       <PageHeader
         title="Políticas de compartición"
-        description="Reglas que se evalúan antes de cada envío. Cada cambio queda registrado en la auditoría con quién lo hizo y el valor anterior."
         actions={
           canEdit && (
             <Button leftSection={<IconPlus size={16} />} onClick={() => setEditing("new")}>
@@ -276,19 +273,13 @@ export function PoliciesPage() {
           )
         }
       />
-      <Alert variant="light" icon={<IconInfoCircle size={18} />} mb="md">
-        Se evalúan todas las reglas activas y gana la más restrictiva (Bloquear sobre Advertir). Si
-        ninguna aplica, el envío se permite. Además, siempre: la IA (si está activa) solo puede
-        advertir, un documento que no se pudo analizar pide confirmación y "cualquiera con el
-        enlace" solo se permite si ninguna regla advierte ni bloquea.
-      </Alert>
       {rules.isPending ? (
         <Loader />
       ) : rules.isError ? (
         <Alert color="red">{rules.error.message}</Alert>
       ) : rules.data.length === 0 ? (
         <Paper withBorder p="xl" ta="center">
-          <Text c="dimmed">No hay reglas: todos los envíos se permiten sin confirmación.</Text>
+          <Text c="dimmed">No hay reglas.</Text>
         </Paper>
       ) : (
         <Paper withBorder>
@@ -351,12 +342,7 @@ export function PoliciesPage() {
                             onClick={() =>
                               modals.openConfirmModal({
                                 title: "Eliminar regla",
-                                children: (
-                                  <Text size="sm">
-                                    «{rule.name}» dejará de aplicarse a los próximos envíos. Si solo
-                                    quieres pausarla, desactívala.
-                                  </Text>
-                                ),
+                                children: <Text size="sm">¿Eliminar «{rule.name}»?</Text>,
                                 labels: { confirm: "Eliminar", cancel: "Cancelar" },
                                 confirmProps: { color: "red" },
                                 onConfirm: () => remove.mutate(rule),

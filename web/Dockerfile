@@ -8,7 +8,6 @@ ARG VITE_SHOW_DEMO_ACCOUNTS=false
 ENV VITE_SHOW_DEMO_ACCOUNTS=$VITE_SHOW_DEMO_ACCOUNTS
 RUN npm run build
 
-# nginx sin privilegios (usuario 101, puerto > 1024).
 FROM nginxinc/nginx-unprivileged:stable-alpine
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf

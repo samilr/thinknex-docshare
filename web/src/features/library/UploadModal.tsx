@@ -49,7 +49,6 @@ function FindingsNote({ result }: { result: UploadResult }) {
   );
 }
 
-/** Subida de archivos nuevos a una biblioteca/carpeta. */
 export function UploadModal({
   opened,
   onClose,
@@ -127,7 +126,6 @@ export function UploadModal({
         </Text>
         <Select
           label="Clasificación"
-          description="Define cómo se podrá compartir (por ejemplo, RESTRINGIDA nunca sale a externos)"
           data={Object.entries(CLASSIFICATION).map(([value, { label }]) => ({ value, label }))}
           value={classification}
           onChange={(v) => v && setClassification(v as Classification)}
@@ -237,7 +235,6 @@ export function UploadModal({
   );
 }
 
-/** Nueva versión de un archivo existente (desde el panel o el menú). */
 export function NewVersionModal({
   documentId,
   onClose,
@@ -284,10 +281,7 @@ export function NewVersionModal({
       <Stack>
         {result ? (
           <>
-            <Alert color="green" title={`Versión ${result.document.version} publicada`}>
-              La versión anterior queda en el historial. Los envíos ya realizados conservan la copia
-              que se compartió.
-            </Alert>
+            <Alert color="green" title={`Versión ${result.document.version} publicada`} />
             <FindingsNote result={result} />
             <Button onClick={close}>Listo</Button>
           </>

@@ -80,7 +80,6 @@ export function useActivity(id: string | null) {
   });
 }
 
-/** Contenido para vista o descarga interna (PDF con marca de agua; queda auditado). */
 export async function fetchContent(
   id: string,
   { version, disposition = "inline" }: { version?: number; disposition?: "inline" | "attachment" },
@@ -125,7 +124,6 @@ export async function uploadDocument(input: {
     classification: input.classification,
   });
   const { data, error, response } = await api.POST("/api/v1/library/documents", {
-    // El body tipado es multipart: se envía el FormData tal cual.
     body: form as never,
     bodySerializer: () => form,
   });
@@ -164,7 +162,6 @@ export async function updateDocument(
   return data;
 }
 
-/** Elimina el archivo y revoca sus envíos activos. Devuelve cuántos se revocaron. */
 export async function deleteDocument(id: string): Promise<number> {
   const { data, error } = await api.DELETE("/api/v1/library/documents/{doc_id}", {
     params: { path: { doc_id: id } },

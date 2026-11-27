@@ -193,9 +193,9 @@ describe("explorador de documentos", () => {
     const input = await screen.findByLabelText("Nombre");
     expect(input).toHaveValue("certificado");
     expect(screen.getByText(".pdf")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Clasificación" })).toBeDisabled(); // no es ADMIN
+    expect(screen.getByRole("combobox", { name: "Clasificación" })).toBeDisabled();
     const submit = screen.getByRole("button", { name: "Guardar" });
-    expect(submit).toBeDisabled(); // sin cambios
+    expect(submit).toBeDisabled();
 
     await userEvent.clear(input);
     await userEvent.type(input, "Existente");

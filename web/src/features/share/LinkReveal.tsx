@@ -1,7 +1,6 @@
 import { ActionIcon, Alert, CopyButton, Group, Stack, TextInput, Tooltip } from "@mantine/core";
 import { IconCheck, IconCopy, IconLink } from "@tabler/icons-react";
 
-/** Muestra un enlace de ThinkNex Docs recién creado, con botón Copiar. Solo se ve una vez. */
 export function LinkReveal({ link }: { link: string }) {
   return (
     <Stack gap="xs" w="100%">
@@ -31,8 +30,7 @@ export function LinkReveal({ link }: { link: string }) {
         </CopyButton>
       </Group>
       <Alert variant="light" color="yellow" ta="left">
-        Copia el enlace ahora: por seguridad solo se guarda su huella y no se puede volver a
-        mostrar. Si lo pierdes, genera uno nuevo desde el envío (el anterior dejará de funcionar).
+        Copia el enlace ahora: no se volverá a mostrar.
       </Alert>
     </Stack>
   );

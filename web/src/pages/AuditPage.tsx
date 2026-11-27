@@ -128,7 +128,6 @@ export function AuditPage() {
     <>
       <PageHeader
         title="Auditoría"
-        description="Registro inmutable de quién hizo qué, cuándo y por qué medio. Cada evento está encadenado por hash."
         actions={
           <Button
             variant="default"

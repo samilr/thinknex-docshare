@@ -13,7 +13,6 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Tipos aceptados al subir (deben coincidir con la validación del sistema documental). */
 export const ACCEPT = {
   "application/pdf": [".pdf"],
   "image/png": [".png"],

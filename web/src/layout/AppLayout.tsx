@@ -157,9 +157,6 @@ export function AppLayout() {
         </AppShell.Section>
         <AppShell.Section>
           <Text size="xs" c="dimmed" px="sm">
-            Toda acción queda registrada en una auditoría inmutable.
-          </Text>
-          <Text size="xs" c="dimmed" px="sm" mt={6}>
             ThinkNex Docs · prototipo de prueba técnica con datos ficticios.
           </Text>
         </AppShell.Section>

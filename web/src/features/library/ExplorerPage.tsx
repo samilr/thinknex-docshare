@@ -147,7 +147,7 @@ export function ExplorerPage() {
   const queryClient = useQueryClient();
   const libraries = useLibraries();
   const [view, setView] = useState<View>("list");
-  // La búsqueda pertenece a una ubicación: al navegar a otra carpeta se descarta sola.
+
   const location = `${libraryId ?? ""}/${folderId ?? ""}`;
   const [searchState, setSearchState] = useState({ location, value: "" });
   const search = searchState.location === location ? searchState.value : "";
@@ -167,11 +167,8 @@ export function ExplorerPage() {
       zIndex: 400,
       children: (
         <Text size="sm">
-          «{doc.filename}» dejará de estar en la biblioteca.
-          {doc.active_shares > 0
-            ? ` Sus ${doc.active_shares} envío(s) activo(s) se revocarán: los destinatarios ya no podrán abrirlo.`
-            : ""}{" "}
-          Las versiones se conservan en el sistema documental y la acción queda en la auditoría.
+          ¿Eliminar «{doc.filename}»?
+          {doc.active_shares > 0 ? ` ${doc.active_shares} envío(s) activo(s) se revocarán.` : ""}
         </Text>
       ),
       labels: { confirm: "Eliminar", cancel: "Cancelar" },
@@ -193,7 +190,6 @@ export function ExplorerPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
 
-  // Sin biblioteca en la URL: abrir la primera.
   useEffect(() => {
     if (!libraryId && libraries.data?.[0]) {
       navigate(`/documentos/${libraries.data[0].id}`, { replace: true });
@@ -259,10 +255,7 @@ export function ExplorerPage() {
 
   return (
     <>
-      <PageHeader
-        title="Documentos"
-        description="Bibliotecas del sistema documental. Abre un archivo para verlo, revisar quién tiene acceso o compartirlo."
-      />
+      <PageHeader title="Documentos" />
       <Grid gap="lg">
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Paper withBorder radius="lg" p="xs">

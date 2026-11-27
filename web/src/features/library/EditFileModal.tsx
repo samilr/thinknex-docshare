@@ -21,10 +21,6 @@ const CLASSIFICATION_OPTIONS = Object.entries(CLASSIFICATION).map(([value, { lab
   label,
 }));
 
-/**
- * Edita un archivo: nombre (la extensión la define el tipo real del contenido) y, solo un ADMIN,
- * la clasificación. Cada cambio queda en la auditoría con el valor anterior y quién lo hizo.
- */
 export function EditFileModal({
   document,
   onClose,
@@ -34,7 +30,7 @@ export function EditFileModal({
 }) {
   return (
     <Modal
-      zIndex={400} // por encima del panel lateral del explorador
+      zIndex={400}
       opened={document !== null}
       onClose={onClose}
       title={<Text fw={700}>Editar archivo</Text>}
@@ -98,11 +94,6 @@ function EditForm({ document, onClose }: { document: LibraryDocument; onClose: (
         />
         <Select
           label="Clasificación"
-          description={
-            isAdmin
-              ? "Define qué reglas de la política aplican al compartir"
-              : "Solo un administrador puede cambiarla"
-          }
           data={CLASSIFICATION_OPTIONS}
           value={classification}
           onChange={(value) => value && setClassification(value as Classification)}
@@ -110,10 +101,6 @@ function EditForm({ document, onClose }: { document: LibraryDocument; onClose: (
           disabled={!isAdmin}
           comboboxProps={{ zIndex: 500 }}
         />
-        <Text size="xs" c="dimmed">
-          Nombre actual: {document.filename}. Editar no crea una versión ni cambia lo que ya se
-          compartió: cada envío conserva el nombre y la clasificación con que se compartió.
-        </Text>
         {save.error && <Alert color="red">{save.error.message}</Alert>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>

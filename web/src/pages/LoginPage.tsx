@@ -62,8 +62,7 @@ export function LoginPage() {
           </ThemeIcon>
           <Title order={2}>ThinkNex Docs</Title>
           <Text c="dimmed" size="sm" ta="center">
-            Compartición segura de documentos con trazabilidad completa: quién, cuándo y por qué
-            medio.
+            Compartición segura de documentos
           </Text>
         </Stack>
         <Paper withBorder shadow="sm" p="xl" radius="lg">
@@ -117,9 +116,6 @@ export function LoginPage() {
                 </Text>
               ))}
             </Stack>
-            <Text size="xs" c="dimmed" mt={6}>
-              Las contraseñas se entregan junto con la documentación de la prueba.
-            </Text>
           </Paper>
         )}
         <Text size="xs" c="dimmed" ta="center">

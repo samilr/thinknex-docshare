@@ -224,7 +224,6 @@ export function UsersPage() {
     <>
       <PageHeader
         title="Usuarios"
-        description="Gestión de cuentas y roles. Cada cambio queda registrado en la auditoría."
         actions={
           <Button leftSection={<IconPlus size={16} />} onClick={() => setEditing(null)}>
             Nuevo usuario

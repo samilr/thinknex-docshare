@@ -37,7 +37,7 @@ interface FormValues {
   channel: Channel;
   audience: Audience;
   permission: Permission;
-  /** Canal LINK con persona específica: por dónde recibe el código. */
+
   codeVia: "EMAIL" | "SMS";
   email: string;
   phone: string;
@@ -59,15 +59,8 @@ const CHANNEL_OPTIONS = [
   { value: "SMS", label: "SMS" },
 ];
 
-const PERMISSION_HELP: Record<Permission, string> = {
-  VIEW: "Lee el documento en el visor de ThinkNex Docs. Nunca recibe el archivo: ve páginas con marca de agua.",
-  DOWNLOAD: "Además del visor, puede descargar una copia con marca de agua.",
-  EDIT: "Trabaja sobre el archivo vigente y puede publicar nuevas versiones en la biblioteca.",
-};
-
 const isAnyone = (v: FormValues) => v.channel === "LINK" && v.audience === "ANYONE";
 
-/** Dónde se contacta al destinatario: el canal mismo o, para LINK, por dónde va el código. */
 const usesEmail = (v: FormValues) =>
   v.channel === "EMAIL" || (v.channel === "LINK" && v.codeVia === "EMAIL");
 
@@ -146,10 +139,6 @@ export function SensitivityReportView({
           Reglas aplicadas: {report.matched_rules.join(" · ")}
         </Text>
       )}
-      <Text size="xs" c="dimmed">
-        Motor: {report.engine}
-        {report.llm_input_truncated ? " · el análisis de IA usó un extracto del documento" : ""}
-      </Text>
     </Stack>
   );
 }
@@ -272,7 +261,7 @@ export function ShareWizard({
 
   return (
     <Modal
-      zIndex={400} // por encima del panel lateral del explorador
+      zIndex={400}
       opened={opened}
       onClose={close}
       size="lg"
@@ -311,12 +300,6 @@ export function ShareWizard({
                   if (value !== "LINK") form.setFieldValue("audience", "SPECIFIC");
                 }}
               />
-              {form.values.channel === "LINK" && (
-                <Text size="xs" c="dimmed" mt={4}>
-                  ThinkNex Docs crea el enlace y tú lo envías por el medio que prefieras (chat,
-                  correo, Teams…). El destinatario lo abre en el visor de la aplicación.
-                </Text>
-              )}
             </div>
             {form.values.channel === "LINK" && (
               <div>
@@ -337,12 +320,6 @@ export function ShareWizard({
                     }
                   }}
                 />
-                {form.values.audience === "ANYONE" && (
-                  <Text size="xs" c="dimmed" mt={4}>
-                    Sin verificación de identidad: solo se permite con documentos públicos o
-                    internos sin datos personales.
-                  </Text>
-                )}
               </div>
             )}
             {!isAnyone(form.values) && (
@@ -386,18 +363,8 @@ export function ShareWizard({
                 }))}
                 {...form.getInputProps("permission")}
               />
-              <Text size="xs" c="dimmed" mt={4}>
-                {PERMISSION_HELP[form.values.permission]}
-                {isAnyone(form.values) && " La edición requiere una persona específica."}
-              </Text>
             </div>
-            <Textarea
-              label="Motivo"
-              description="Queda registrado en la auditoría"
-              autosize
-              minRows={2}
-              {...form.getInputProps("reason")}
-            />
+            <Textarea label="Motivo" autosize minRows={2} {...form.getInputProps("reason")} />
             <Group grow>
               <Select
                 label="Vigencia del enlace"
@@ -407,7 +374,6 @@ export function ShareWizard({
               />
               <NumberInput
                 label="Accesos permitidos"
-                description="Cada apertura verificada cuenta uno"
                 min={1}
                 max={100}
                 {...form.getInputProps("maxAccesses")}
@@ -434,8 +400,7 @@ export function ShareWizard({
           <SensitivityReportView report={report} anyone={isAnyone(form.values)} />
           {blocked && (
             <Alert color="red" title="No es posible compartir">
-              La política de la organización impide enviar este documento a este destinatario. El
-              intento quedó registrado.
+              La política impide enviar este documento a este destinatario.
             </Alert>
           )}
           {needsAck && (
@@ -471,10 +436,8 @@ export function ShareWizard({
               <Text fw={600}>Enlace de ThinkNex Docs listo</Text>
               <LinkReveal link={result.link} />
               <Text size="sm" c="dimmed">
-                {result.recipient
-                  ? `Para ${result.recipient.name}: le pediremos un código enviado a ${result.recipient.contact}.`
-                  : "Cualquier persona con el enlace podrá abrirlo, sin verificación."}{" "}
-                Permiso: {PERMISSION[result.permission]?.label.toLowerCase()} · vence el{" "}
+                {result.recipient ? `${result.recipient.name} · ` : ""}Permiso:{" "}
+                {PERMISSION[result.permission]?.label.toLowerCase()} · vence el{" "}
                 {formatDateTime(result.expires_at)} · {result.max_accesses} acceso(s).
               </Text>
             </>
@@ -487,10 +450,6 @@ export function ShareWizard({
                 Permiso: {PERMISSION[result.permission]?.label.toLowerCase()} · vence el{" "}
                 {formatDateTime(result.expires_at)} · {result.max_accesses} acceso(s) · notificación{" "}
                 {result.notification_status === "SENT" ? "entregada" : "con error"}
-              </Text>
-              <Text size="xs" c="dimmed" maw={420}>
-                Por seguridad el enlace no se muestra aquí: solo lo recibe el destinatario, quien
-                además deberá validar un código.
               </Text>
             </>
           )}

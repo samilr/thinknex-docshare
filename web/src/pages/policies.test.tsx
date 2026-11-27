@@ -43,8 +43,7 @@ describe("políticas de compartición", () => {
       screen.getByRole("button", { name: "Editar Datos personales a externos" }),
     );
     const dialog = await screen.findByRole("dialog");
-    // En un MultiSelect, elegir una opción ya seleccionada la quita.
-    // (en jsdom las opciones quedan ocultas por la transición del desplegable)
+
     await userEvent.click(within(dialog).getByRole("combobox", { name: /Datos detectados/ }));
     await userEvent.click(screen.getByRole("option", { name: "Correo electrónico", hidden: true }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));

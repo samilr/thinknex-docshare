@@ -28,7 +28,6 @@ async function logout(page: Page) {
 test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ page, context }) => {
   const recipient = `auditor-${Date.now()}@auditora.example`;
 
-  // 1. Ana navega la biblioteca, sube un archivo, lo abre y lo comparte desde su panel
   await login(page, "ana@thinknex.example", PASSWORD);
   await shot(page, "01-dashboard-ana");
   await page.getByRole("link", { name: "Documentos" }).click();
@@ -50,7 +49,6 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await shot(page, "03-subida");
   await uploadDialog.getByRole("button", { name: "Cerrar" }).click();
 
-  // Renombrar: la extensión se conserva y el cambio queda en la actividad del archivo.
   const finalName = fileName.replace(".pdf", "-final");
   await page.getByRole("button", { name: `Acciones de ${fileName.replace(".pdf", "")}` }).click();
   await page.getByRole("menuitem", { name: "Editar" }).click();
@@ -89,7 +87,6 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await shot(page, "07-envios");
   await logout(page);
 
-  // 2. El ADMIN ve el mensaje en la bandeja simulada y abre el enlace como destinatario
   await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await page.getByRole("link", { name: "Bandeja simulada" }).click();
   await page.getByPlaceholder("Filtrar por destinatario…").fill(recipient);
@@ -115,7 +112,7 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   const otp = (await otpButton.textContent())!.match(/\d{6}/)![0];
 
   await recipientPage.getByRole("textbox").first().click();
-  await recipientPage.keyboard.type(otp); // al completar los 6 dígitos se verifica solo
+  await recipientPage.keyboard.type(otp);
   await expect(recipientPage.getByRole("img", { name: "Página 1" })).toBeVisible();
   await shot(recipientPage, "09b-visor-destinatario");
   const download = recipientPage.waitForEvent("download");
@@ -127,8 +124,6 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await expect(page.getByText("carla@thinknex.example")).toBeVisible();
   await shot(page, "10-usuarios");
 
-  // El ADMIN ve las políticas y administra la biblioteca: elimina el archivo de prueba, lo que
-  // revoca su envío activo.
   await page.getByRole("link", { name: "Políticas" }).click();
   await expect(page.getByText("Datos personales a externos")).toBeVisible();
   await shot(page, "10b-politicas");
@@ -143,7 +138,6 @@ test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ pa
   await expect(page.getByText(finalName, { exact: true })).toHaveCount(0);
   await logout(page);
 
-  // 3. Carla (AUDITOR) verifica la trazabilidad
   await login(page, "carla@thinknex.example", PASSWORD);
   await page.getByRole("link", { name: "Auditoría" }).click();
   await expect(page.getByText("Cadena de auditoría íntegra")).toBeVisible();

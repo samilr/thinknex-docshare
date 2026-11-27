@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setStatus(session ? "authenticated" : "anonymous");
     });
-    // Restaurar la sesión desde la cookie de refresh (si existe).
+
     void refreshSession();
     return () => {
       unsubscribe();

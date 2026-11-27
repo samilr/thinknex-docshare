@@ -80,11 +80,6 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={`Hola, ${user?.name.split(" ")[0] ?? ""}`}
-        description={
-          data?.scope === "all"
-            ? "Indicadores de toda la plataforma."
-            : "Indicadores de los documentos que has compartido."
-        }
         actions={
           <Badge variant="light">{data?.scope === "all" ? "Vista global" : "Mis envíos"}</Badge>
         }

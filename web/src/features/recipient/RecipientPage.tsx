@@ -29,7 +29,6 @@ import { formatDateTime } from "../../lib/format";
 import { AccessError, type AccessInfo, accessApi, type AccessSession } from "./accessApi";
 import { DocumentViewer } from "./DocumentViewer";
 
-/** Página pública: fuera de la sesión interna, con la marca del prototipo. */
 export function PublicShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <Box mih="100vh" bg="var(--mantine-color-gray-0)">
@@ -70,8 +69,7 @@ function Unavailable() {
           </ThemeIcon>
           <Title order={3}>Enlace no disponible</Title>
           <Text c="dimmed" size="sm">
-            El enlace no existe, venció, fue revocado o alcanzó su límite de accesos. Si necesitas
-            el documento, pídele a quien te lo compartió un enlace nuevo.
+            El enlace no existe, venció o fue revocado.
           </Text>
         </Stack>
       </Paper>
@@ -119,8 +117,7 @@ function CodeStep({
   return (
     <Stack>
       <Text size="sm">
-        Por seguridad, verifica tu identidad con un código que enviaremos a{" "}
-        <b>{sentTo ?? info.destination}</b>.
+        Te enviaremos un código a <b>{sentTo ?? info.destination}</b>.
       </Text>
       {error && (
         <Alert color="red" variant="light">
@@ -222,8 +219,7 @@ export function RecipientPage() {
             <AudienceBadge value={data.audience} />
           </Group>
           <Text size="xs" c="dimmed">
-            Disponible hasta el {formatDateTime(data.expires_at)}. Cada acceso queda registrado y
-            las páginas llevan una marca de agua con tu identidad.
+            Disponible hasta el {formatDateTime(data.expires_at)}.
           </Text>
           {data.requires_code ? (
             <CodeStep token={token} info={data} onSession={setSession} />

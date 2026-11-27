@@ -1,5 +1,3 @@
-/** Etiquetas y colores en español para los valores del dominio. */
-
 type Label = { label: string; color: string };
 
 export const SHARE_STATUS: Record<string, Label> = {

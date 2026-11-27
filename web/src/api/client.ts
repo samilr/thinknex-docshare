@@ -1,11 +1,3 @@
-/**
- * Cliente HTTP tipado (generado desde el OpenAPI de share-api).
- *
- * Seguridad de la sesión:
- * - El access token vive SOLO en memoria (nunca en localStorage).
- * - El refresh token es una cookie httpOnly que JavaScript no puede leer.
- * - Ante un 401 se intenta UNA renovación (single-flight) y se reintenta la solicitud.
- */
 import createClient from "openapi-fetch";
 import type { components, paths } from "./schema";
 
@@ -75,7 +67,6 @@ export const api = createClient<paths>({
   credentials: "same-origin",
 });
 
-/** Respuesta de error de la API (RFC 7807 o validación de FastAPI). */
 export interface Problem {
   title?: string;
   detail?: string | { msg: string; loc?: (string | number)[] }[];
@@ -93,7 +84,6 @@ export function problemMessage(error: unknown, fallback = "Ocurrió un error ine
   return problem.detail ?? problem.title ?? fallback;
 }
 
-/** Lanza un Error legible si la llamada de openapi-fetch falló (útil con TanStack Query). */
 export function unwrap<T>(result: { data?: T; error?: unknown }): T {
   if (result.error !== undefined || result.data === undefined) {
     throw Object.assign(new Error(problemMessage(result.error)), { problem: result.error });

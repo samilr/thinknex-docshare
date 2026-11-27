@@ -1,9 +1,3 @@
-/**
- * Cliente de la API pública del destinatario (/api/v1/access/{token}).
- *
- * Es independiente del cliente interno: no envía cookies ni la sesión de un usuario de la
- * organización. La sesión de acceso (JWT de 30 min ligado al envío) vive solo en memoria.
- */
 import type { Problem, Schemas } from "../../api/client";
 import { problemMessage } from "../../api/client";
 
@@ -12,7 +6,6 @@ export type AccessSession = Schemas["AccessSessionOut"];
 export type DocumentView = Schemas["DocumentViewOut"];
 export type VersionPublished = Schemas["VersionPublishedOut"];
 
-/** Error de la API con el status HTTP y el problema (RFC 7807) para decidir qué mostrar. */
 export class AccessError extends Error {
   constructor(
     readonly status: number,
@@ -20,7 +13,7 @@ export class AccessError extends Error {
   ) {
     super(problemMessage(problem, status === 404 ? "Enlace no disponible" : undefined));
   }
-  /** 404 uniforme: el enlace no existe, venció, se revocó, se bloqueó o la sesión terminó. */
+
   get unavailable(): boolean {
     return this.status === 404;
   }

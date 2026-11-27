@@ -36,7 +36,6 @@ export const emptyStats = {
   users_active: null,
 };
 
-/** Simula una sesión ya iniciada (la app la restaura vía /auth/refresh al arrancar). */
 export function loggedInAs(roles: string[], overrides: Record<string, unknown> = {}) {
   server.use(
     http.post("*/api/v1/auth/refresh", () => HttpResponse.json(sessionFor(roles, overrides))),

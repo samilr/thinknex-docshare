@@ -13,7 +13,6 @@ export const formatRelative = (value: string | null | undefined): string =>
 
 export const formatDay = (value: string): string => dayjs(value).format("ddd DD");
 
-/** CSV compatible con Excel (separador ; y BOM UTF-8 para tildes). */
 export function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]!);

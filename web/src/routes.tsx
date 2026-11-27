@@ -30,7 +30,7 @@ const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default:
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage />, errorElement: <RouteErrorPage /> },
-  // Público: el destinatario abre el enlace sin cuenta de la organización.
+
   {
     path: "/s/:token",
     errorElement: <RouteErrorPage />,

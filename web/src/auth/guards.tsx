@@ -6,7 +6,6 @@ import { type Role, useAuth } from "./context";
 
 export const CHANGE_PASSWORD_PATH = "/cuenta/clave";
 
-/** Exige sesión. Si la contraseña es temporal, obliga a cambiarla antes de continuar. */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status, user, loggedOut } = useAuth();
   const location = useLocation();
@@ -26,7 +25,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Oculta contenido según rol. La API vuelve a validar: esto es solo experiencia de usuario. */
 export function RequireRoles({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { hasRole } = useAuth();
   if (hasRole(...roles)) return <>{children}</>;

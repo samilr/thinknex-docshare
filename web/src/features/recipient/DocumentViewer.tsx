@@ -62,7 +62,7 @@ function ProtectedPage({
   const page = useQuery({
     queryKey: ["access", token, "page", version, number, session],
     queryFn: async () => URL.createObjectURL(await accessApi.page(token, session, number)),
-    gcTime: 0, // la URL se libera al desmontar: no se reutiliza desde la caché
+    gcTime: 0,
     staleTime: Infinity,
     retry: false,
   });
@@ -146,7 +146,7 @@ function UploadVersionModal({
     onSuccess: (result) => {
       notifications.show({
         color: "green",
-        message: `Versión ${result.version} publicada. Quien te compartió el archivo ya la ve.`,
+        message: `Versión ${result.version} publicada.`,
       });
       if (result.findings.length > 0) {
         notifications.show({
@@ -167,8 +167,7 @@ function UploadVersionModal({
     <Modal opened={opened} onClose={onClose} title={<Text fw={700}>Subir nueva versión</Text>}>
       <Stack>
         <Text size="sm" c="dimmed">
-          Se publicará como versión {view.version + 1} de “{view.title}” en la biblioteca de quien
-          te lo compartió. Queda registrado a tu nombre.
+          Se publicará como versión {view.version + 1}.
         </Text>
         <Dropzone
           onDrop={(files) => {
@@ -255,9 +254,7 @@ export function DocumentViewer({
       <Alert color={ended ? "yellow" : "red"} title={ended ? "Tu sesión terminó" : "Error"}>
         <Stack gap="xs" align="flex-start">
           <Text size="sm">
-            {ended
-              ? "La sesión de acceso dura 30 minutos o el enlace dejó de estar disponible."
-              : view.error.message}
+            {ended ? "Vuelve a abrir el enlace para continuar." : view.error.message}
           </Text>
           <Button size="xs" variant="light" onClick={onEnded}>
             Volver a abrir
@@ -340,7 +337,7 @@ export function DocumentViewer({
           <Group gap={6} mt="sm">
             <IconEyeOff size={14} color="var(--mantine-color-dimmed)" />
             <Text size="xs" c="dimmed">
-              Solo lectura: quien te compartió este documento no permite descargarlo.
+              Solo lectura
             </Text>
           </Group>
         )}
@@ -365,8 +362,7 @@ export function DocumentViewer({
         <TextContent token={token} session={access} version={doc.version} />
       ) : (
         <Alert color="gray" title="Vista previa no disponible">
-          Este tipo de archivo ({doc.mime_type}) no se puede mostrar en el visor.
-          {doc.can_download ? " Puedes descargarlo con el botón Descargar." : ""}
+          Este tipo de archivo no se puede mostrar en el visor.
         </Alert>
       )}
 

@@ -62,7 +62,6 @@ export function SharesPage() {
     <>
       <PageHeader
         title="Envíos"
-        description="Cada envío es un enlace personal con vencimiento, límite de descargas y verificación por código."
         actions={
           oversight && hasRole("SHARER") ? (
             <SegmentedControl

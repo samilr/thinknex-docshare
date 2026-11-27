@@ -1,4 +1,3 @@
-/** Resumen legible del detalle de un evento de auditoría (columna "Detalle" y actividad). */
 export function eventSummary(event: {
   event_type: string;
   metadata: Record<string, unknown>;

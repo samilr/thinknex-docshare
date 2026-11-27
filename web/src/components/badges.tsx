@@ -73,7 +73,6 @@ export function PermissionBadge({ value }: { value: string }) {
   );
 }
 
-/** Solo se muestra para "cualquiera con el enlace" (lo habitual es una persona específica). */
 export function AudienceBadge({ value }: { value: string }) {
   if (value !== "ANYONE") return null;
   const { label, color } = labelOf(AUDIENCE, value);

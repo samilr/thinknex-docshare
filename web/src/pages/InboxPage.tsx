@@ -3,7 +3,6 @@ import {
   Badge,
   Button,
   Card,
-  Code,
   CopyButton,
   Group,
   Skeleton,
@@ -13,7 +12,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { IconAlertTriangle, IconExternalLink, IconSearch } from "@tabler/icons-react";
+import { IconExternalLink, IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 import { api, unwrap } from "../api/client";
 import { ChannelLabel } from "../components/badges";
@@ -39,14 +38,7 @@ export function InboxPage() {
 
   return (
     <>
-      <PageHeader
-        title="Bandeja simulada"
-        description="Lo que recibe cada destinatario por email, WhatsApp o SMS. Permite probar el flujo completo sin enviar mensajes reales."
-      />
-      <Alert color="yellow" icon={<IconAlertTriangle size={18} />} mb="md">
-        Solo para demostración: esta bandeja muestra enlaces y códigos en claro. En producción se
-        deshabilita (<Code>SIMULATED_INBOX_ENABLED=false</Code>).
-      </Alert>
+      <PageHeader title="Bandeja simulada" />
       <TextInput
         placeholder="Filtrar por destinatario…"
         leftSection={<IconSearch size={16} />}

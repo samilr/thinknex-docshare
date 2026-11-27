@@ -3,11 +3,6 @@ import { expect, test } from "@playwright/test";
 const PASSWORD = process.env.DEMO_USERS_PASSWORD ?? "Demo-pass-2026";
 const SHOTS = process.env.SCREENSHOTS_DIR;
 
-/**
- * Enlace de ThinkNex Docs para cualquiera, de solo lectura: Ana copia el enlace, alguien sin
- * cuenta lo abre en el visor (sin botón Descargar) y luego Ana genera un enlace nuevo, con lo
- * que el anterior deja de funcionar.
- */
 test("enlace para cualquiera de solo lectura y regeneración del enlace", async ({
   page,
   browser,
@@ -40,7 +35,6 @@ test("enlace para cualquiera de solo lectura y regeneración del enlace", async 
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/12-enlace-creado.png` });
   await review.getByRole("button", { name: "Listo" }).click();
 
-  // Alguien sin cuenta (otro contexto, sin cookies) abre el enlace.
   const stranger = await browser.newContext();
   const viewer = await stranger.newPage();
   await viewer.goto(link);
@@ -52,7 +46,6 @@ test("enlace para cualquiera de solo lectura y regeneración del enlace", async 
   if (SHOTS)
     await viewer.screenshot({ path: `${SHOTS}/13-visor-solo-lectura.png`, fullPage: true });
 
-  // Ana genera un enlace nuevo desde "Personas con acceso": el anterior deja de funcionar.
   await panel.getByRole("tab", { name: /Acceso/ }).click();
   await expect(panel.getByText("Cualquier persona con el enlace").first()).toBeVisible();
   await panel.getByRole("button", { name: "Nuevo enlace" }).first().click();
