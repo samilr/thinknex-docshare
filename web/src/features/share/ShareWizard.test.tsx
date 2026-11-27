@@ -68,6 +68,9 @@ describe("ShareWizard", () => {
             recipient: { name: "María", contact: "m***@cliente.example", is_external: true },
             shared_by: "ana@thinknex.example",
             channel: "EMAIL",
+            audience: "SPECIFIC",
+            permission: "DOWNLOAD",
+            link: null,
             reason: "Certificado solicitado",
             status: "ACTIVE",
             created_at: new Date().toISOString(),
@@ -102,7 +105,77 @@ describe("ShareWizard", () => {
     expect(sentBody).toMatchObject({
       acknowledge_sensitive: true,
       channel: "EMAIL",
+      audience: "SPECIFIC",
+      permission: "DOWNLOAD",
       max_accesses: 3,
+    });
+  });
+
+  it("crea un enlace de ThinkNex Docs para cualquiera, de solo lectura, y lo muestra", async () => {
+    let precheckBody: Record<string, unknown> | null = null;
+    let sentBody: Record<string, unknown> | null = null;
+    const link = "http://localhost/s/abcDEF123456";
+    server.use(
+      http.post("*/api/v1/shares/precheck", async ({ request }) => {
+        precheckBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          document,
+          report: { ...warnReport, decision: "ALLOW", reasons: [], findings: [] },
+        });
+      }),
+      http.post("*/api/v1/shares", async ({ request }) => {
+        sentBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            id: "22222222-2222-2222-2222-222222222222",
+            document: {
+              source_id: "doc-006",
+              source_version: 1,
+              title: document.title,
+              sha256: document.sha256,
+              classification: "INTERNAL",
+            },
+            recipient: null,
+            shared_by: "ana@thinknex.example",
+            channel: "LINK",
+            audience: "ANYONE",
+            permission: "VIEW",
+            link,
+            reason: "Folleto",
+            status: "ACTIVE",
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 72 * 3600e3).toISOString(),
+            max_accesses: 3,
+            access_count: 0,
+            sensitivity_decision: "ALLOW",
+            sensitivity_report: {},
+            notification_status: null,
+            revoked_at: null,
+          },
+          { status: 201 },
+        );
+      }),
+    );
+    renderWizard();
+    await userEvent.click(await screen.findByText("Enlace ThinkNex Docs"));
+    await userEvent.click(screen.getByText("Cualquiera con el enlace"));
+    expect(screen.queryByLabelText("Nombre del destinatario")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Editar" })).toBeDisabled();
+    await userEvent.click(screen.getByText("Solo ver"));
+    await userEvent.type(screen.getByLabelText(/Motivo/), "Folleto");
+    await userEvent.click(screen.getByRole("button", { name: "Revisar seguridad" }));
+
+    expect(await screen.findByText("Cualquier persona con el enlace")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Compartir" }));
+
+    expect(await screen.findByLabelText("Enlace para compartir")).toHaveValue(link);
+    expect(screen.getByRole("button", { name: "Copiar enlace" })).toBeInTheDocument();
+    expect(precheckBody).toMatchObject({ audience: "ANYONE", recipient: null });
+    expect(sentBody).toMatchObject({
+      channel: "LINK",
+      audience: "ANYONE",
+      permission: "VIEW",
+      recipient: null,
     });
   });
 

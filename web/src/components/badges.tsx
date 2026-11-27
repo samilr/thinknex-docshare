@@ -1,6 +1,24 @@
 import { Badge, Group, Text } from "@mantine/core";
-import { IconBrandWhatsapp, IconMail, IconMessage } from "@tabler/icons-react";
-import { CHANNEL, CLASSIFICATION, DECISION, labelOf, ROLE, SHARE_STATUS } from "../lib/labels";
+import {
+  IconBrandWhatsapp,
+  IconDownload,
+  IconEye,
+  IconLink,
+  IconMail,
+  IconMessage,
+  IconPencil,
+  IconWorld,
+} from "@tabler/icons-react";
+import {
+  AUDIENCE,
+  CHANNEL,
+  CLASSIFICATION,
+  DECISION,
+  labelOf,
+  PERMISSION,
+  ROLE,
+  SHARE_STATUS,
+} from "../lib/labels";
 
 export function StatusBadge({ status }: { status: string }) {
   const { label, color } = labelOf(SHARE_STATUS, status);
@@ -43,7 +61,35 @@ export function RoleBadge({ role }: { role: string }) {
   );
 }
 
-const CHANNEL_ICON = { EMAIL: IconMail, WHATSAPP: IconBrandWhatsapp, SMS: IconMessage } as const;
+const PERMISSION_ICON = { VIEW: IconEye, DOWNLOAD: IconDownload, EDIT: IconPencil } as const;
+
+export function PermissionBadge({ value }: { value: string }) {
+  const { label, color } = labelOf(PERMISSION, value);
+  const Icon = PERMISSION_ICON[value as keyof typeof PERMISSION_ICON] ?? IconEye;
+  return (
+    <Badge color={color} variant="light" size="sm" leftSection={<Icon size={12} />}>
+      {label}
+    </Badge>
+  );
+}
+
+/** Solo se muestra para "cualquiera con el enlace" (lo habitual es una persona específica). */
+export function AudienceBadge({ value }: { value: string }) {
+  if (value !== "ANYONE") return null;
+  const { label, color } = labelOf(AUDIENCE, value);
+  return (
+    <Badge color={color} variant="outline" size="sm" leftSection={<IconWorld size={12} />}>
+      {label}
+    </Badge>
+  );
+}
+
+const CHANNEL_ICON = {
+  LINK: IconLink,
+  EMAIL: IconMail,
+  WHATSAPP: IconBrandWhatsapp,
+  SMS: IconMessage,
+} as const;
 
 export function ChannelLabel({ channel }: { channel: string }) {
   const Icon = CHANNEL_ICON[channel as keyof typeof CHANNEL_ICON] ?? IconMessage;

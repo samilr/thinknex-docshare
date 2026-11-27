@@ -24,9 +24,21 @@ export const DECISION: Record<string, Label> = {
 };
 
 export const CHANNEL: Record<string, Label> = {
+  LINK: { label: "Enlace ThinkNex Docs", color: "violet" },
   EMAIL: { label: "Email", color: "indigo" },
   WHATSAPP: { label: "WhatsApp", color: "green" },
   SMS: { label: "SMS", color: "cyan" },
+};
+
+export const PERMISSION: Record<string, Label> = {
+  VIEW: { label: "Solo ver", color: "gray" },
+  DOWNLOAD: { label: "Ver y descargar", color: "blue" },
+  EDIT: { label: "Editar", color: "grape" },
+};
+
+export const AUDIENCE: Record<string, Label> = {
+  SPECIFIC: { label: "Persona específica", color: "teal" },
+  ANYONE: { label: "Cualquiera con el enlace", color: "orange" },
 };
 
 export const ROLE: Record<string, Label> = {
@@ -54,6 +66,8 @@ export const EVENT: Record<string, string> = {
   OTP_VERIFIED: "Código verificado",
   OTP_FAILED: "Código incorrecto",
   DOCUMENT_ACCESSED: "Documento descargado",
+  ACCESS_GRANTED: "Enlace abierto sin código",
+  SHARE_LINK_ROTATED: "Enlace regenerado",
   ACCESS_DENIED: "Acceso denegado",
   SHARE_REVOKED: "Share revocado",
   SHARE_EXPIRED: "Share vencido",
@@ -72,7 +86,7 @@ export const EVENT: Record<string, string> = {
   TOKEN_REUSE_DETECTED: "Reutilización de sesión detectada",
   DOCUMENT_UPLOADED: "Archivo subido",
   DOCUMENT_VERSION_UPLOADED: "Nueva versión subida",
-  DOCUMENT_VIEWED: "Archivo abierto internamente",
+  DOCUMENT_VIEWED: "Documento visualizado",
   FOLDER_CREATED: "Carpeta creada",
 };
 
@@ -89,6 +103,8 @@ export const EVENT_COLOR: Record<string, string> = {
   DOCUMENT_UPLOADED: "teal",
   DOCUMENT_VERSION_UPLOADED: "teal",
   DOCUMENT_VIEWED: "gray",
+  ACCESS_GRANTED: "green",
+  SHARE_LINK_ROTATED: "yellow",
 };
 
 export const labelOf = (map: Record<string, Label>, key: string): Label =>

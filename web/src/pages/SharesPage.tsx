@@ -19,7 +19,7 @@ import { ChannelLabel, StatusBadge } from "../components/badges";
 import { PageHeader } from "../components/PageHeader";
 import { ShareDrawer } from "../features/share/ShareDrawer";
 import { formatDateTime, formatRelative } from "../lib/format";
-import { CHANNEL, SHARE_STATUS } from "../lib/labels";
+import { CHANNEL, labelOf, PERMISSION, SHARE_STATUS } from "../lib/labels";
 
 const PAGE_SIZE = 20;
 type Scope = "mine" | "all";
@@ -145,9 +145,9 @@ export function SharesPage() {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{s.recipient.name}</Text>
+                      <Text size="sm">{s.recipient?.name ?? "Cualquiera con el enlace"}</Text>
                       <Text size="xs" c="dimmed">
-                        {s.recipient.contact}
+                        {s.recipient?.contact ?? labelOf(PERMISSION, s.permission).label}
                       </Text>
                     </Table.Td>
                     <Table.Td>

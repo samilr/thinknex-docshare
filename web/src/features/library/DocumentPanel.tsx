@@ -27,6 +27,7 @@ import {
   IconEye,
   IconInfoCircle,
   IconPoint,
+  IconRefresh,
   IconShare,
   IconUpload,
   IconUsers,
@@ -34,7 +35,14 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { api, problemMessage } from "../../api/client";
 import { useAuth } from "../../auth/context";
-import { ChannelLabel, ClassificationBadge, StatusBadge } from "../../components/badges";
+import {
+  AudienceBadge,
+  ChannelLabel,
+  ClassificationBadge,
+  PermissionBadge,
+  StatusBadge,
+} from "../../components/badges";
+import { LinkReveal } from "../share/LinkReveal";
 import { formatDateTime, formatRelative } from "../../lib/format";
 import { EVENT, EVENT_COLOR } from "../../lib/labels";
 import {
@@ -155,6 +163,22 @@ export function DocumentPanel({
       notifications.show({ color: "green", message: "Acceso revocado" });
       void queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["shares"] });
+    },
+    onError: (e) => notifications.show({ color: "red", message: e.message }),
+  });
+
+  const [revealed, setRevealed] = useState<{ id: string; link: string } | null>(null);
+  const rotate = useMutation({
+    mutationFn: async (shareId: string) => {
+      const { data, error } = await api.POST("/api/v1/shares/{share_id}/link", {
+        params: { path: { share_id: shareId } },
+      });
+      if (!data) throw new Error(problemMessage(error));
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.link) setRevealed({ id: data.id, link: data.link });
+      notifications.show({ color: "green", message: "Nuevo enlace generado" });
     },
     onError: (e) => notifications.show({ color: "red", message: e.message }),
   });
@@ -369,67 +393,99 @@ export function DocumentPanel({
                 {access.isPending && <Loader size="sm" />}
                 {access.data?.length === 0 && (
                   <Text c="dimmed" size="sm">
-                    Este archivo no se ha compartido con personas externas.
+                    Este archivo aún no se ha compartido.
                   </Text>
                 )}
                 {access.data?.map((s) => {
                   const canRevoke =
                     s.status === "ACTIVE" && (s.shared_by === user?.email || hasRole("ADMIN"));
+                  const who = s.recipient?.name ?? "Cualquier persona con el enlace";
                   return (
-                    <Group
+                    <Stack
                       key={s.id}
-                      justify="space-between"
-                      wrap="nowrap"
+                      gap="xs"
                       p="sm"
                       style={{
                         border: "1px solid var(--mantine-color-default-border)",
                         borderRadius: 8,
                       }}
                     >
-                      <Stack gap={2}>
-                        <Group gap={6}>
-                          <Text size="sm" fw={600}>
-                            {s.recipient.name}
-                          </Text>
-                          <StatusBadge status={s.status} />
-                        </Group>
-                        <Text size="xs" c="dimmed">
-                          {s.recipient.contact} · compartido por {s.shared_by} ·{" "}
-                          {formatRelative(s.created_at)}
-                        </Text>
-                        <Group gap="md">
-                          <ChannelLabel channel={s.channel} />
+                      <Group justify="space-between" wrap="nowrap" align="flex-start">
+                        <Stack gap={2}>
+                          <Group gap={6}>
+                            <Text size="sm" fw={600}>
+                              {who}
+                            </Text>
+                            <StatusBadge status={s.status} />
+                          </Group>
                           <Text size="xs" c="dimmed">
-                            {s.access_count}/{s.max_accesses} descargas · vence{" "}
-                            {formatRelative(s.expires_at)}
+                            {s.recipient ? `${s.recipient.contact} · ` : ""}compartido por{" "}
+                            {s.shared_by} · {formatRelative(s.created_at)}
                           </Text>
-                        </Group>
-                      </Stack>
-                      {canRevoke && (
-                        <Button
-                          size="xs"
-                          color="red"
-                          variant="light"
-                          leftSection={<IconBan size={14} />}
-                          loading={revoke.isPending && revoke.variables === s.id}
-                          onClick={() =>
-                            modals.openConfirmModal({
-                              title: "Revocar acceso",
-                              children: (
-                                <Text size="sm">
-                                  {s.recipient.name} dejará de poder abrir el enlace de inmediato.
-                                </Text>
-                              ),
-                              labels: { confirm: "Revocar", cancel: "Cancelar" },
-                              confirmProps: { color: "red" },
-                              onConfirm: () => revoke.mutate(s.id),
-                            })
-                          }
-                        >
-                          Revocar
-                        </Button>
-                      )}
-                    </Group>
+                          <Group gap={6}>
+                            <PermissionBadge value={s.permission} />
+                            <AudienceBadge value={s.audience} />
+                          </Group>
+                          <Group gap="md">
+                            <ChannelLabel channel={s.channel} />
+                            <Text size="xs" c="dimmed">
+                              {s.access_count}/{s.max_accesses} accesos · vence{" "}
+                              {formatRelative(s.expires_at)}
+                            </Text>
+                          </Group>
+                        </Stack>
+                        <Stack gap={6} align="flex-end">
+                          {canRevoke && s.channel === "LINK" && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              leftSection={<IconRefresh size={14} />}
+                              loading={rotate.isPending && rotate.variables === s.id}
+                              onClick={() =>
+                                modals.openConfirmModal({
+                                  title: "Generar nuevo enlace",
+                                  zIndex: 400,
+                                  children: (
+                                    <Text size="sm">
+                                      El enlace actual dejará de funcionar de inmediato.
+                                    </Text>
+                                  ),
+                                  labels: { confirm: "Generar", cancel: "Cancelar" },
+                                  onConfirm: () => rotate.mutate(s.id),
+                                })
+                              }
+                            >
+                              Nuevo enlace
+                            </Button>
+                          )}
+                          {canRevoke && (
+                            <Button
+                              size="xs"
+                              color="red"
+                              variant="light"
+                              leftSection={<IconBan size={14} />}
+                              loading={revoke.isPending && revoke.variables === s.id}
+                              onClick={() =>
+                                modals.openConfirmModal({
+                                  title: "Revocar acceso",
+                                  children: (
+                                    <Text size="sm">
+                                      {who} dejará de poder abrir el enlace de inmediato.
+                                    </Text>
+                                  ),
+                                  labels: { confirm: "Revocar", cancel: "Cancelar" },
+                                  confirmProps: { color: "red" },
+                                  onConfirm: () => revoke.mutate(s.id),
+                                })
+                              }
+                            >
+                              Revocar
+                            </Button>
+                          )}
+                        </Stack>
+                      </Group>
+                      {revealed?.id === s.id && <LinkReveal link={revealed.link} />}
+                    </Stack>
                   );
                 })}
               </Stack>

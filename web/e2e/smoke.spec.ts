@@ -25,7 +25,7 @@ async function logout(page: Page) {
   await expect(page.getByRole("button", { name: "Ingresar" })).toBeVisible();
 }
 
-test("flujo completo: compartir, recibir, descargar y auditar", async ({ page, context }) => {
+test("flujo completo: compartir, recibir, ver, descargar y auditar", async ({ page, context }) => {
   const recipient = `auditor-${Date.now()}@auditora.example`;
 
   // 1. Ana navega la biblioteca, sube un archivo, lo abre y lo comparte desde su panel
@@ -93,8 +93,8 @@ test("flujo completo: compartir, recibir, descargar y auditar", async ({ page, c
   const recipientPage = await context.browser()!.newPage();
   await recipientPage.goto(href!);
   await expect(recipientPage.getByText(/compartió un documento contigo/)).toBeVisible();
-  await recipientPage.getByRole("button", { name: "Enviar código" }).click();
-  await expect(recipientPage.getByText(/Código enviado/)).toBeVisible();
+  await recipientPage.getByRole("button", { name: "Enviarme el código" }).click();
+  await expect(recipientPage.getByRole("button", { name: "Verificar y abrir" })).toBeVisible();
   await shot(recipientPage, "09-destinatario");
 
   await page.reload();
@@ -103,9 +103,12 @@ test("flujo completo: compartir, recibir, descargar y auditar", async ({ page, c
   const otpButton = page.getByRole("button", { name: /Copiar código \d{6}/ }).first();
   const otp = (await otpButton.textContent())!.match(/\d{6}/)![0];
 
-  await recipientPage.getByLabel("Código de 6 dígitos").fill(otp);
+  await recipientPage.getByRole("textbox").first().click();
+  await recipientPage.keyboard.type(otp); // al completar los 6 dígitos se verifica solo
+  await expect(recipientPage.getByRole("img", { name: "Página 1" })).toBeVisible();
+  await shot(recipientPage, "09b-visor-destinatario");
   const download = recipientPage.waitForEvent("download");
-  await recipientPage.getByRole("button", { name: "Verificar y descargar" }).click();
+  await recipientPage.getByRole("button", { name: "Descargar" }).click();
   expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
   await recipientPage.close();
 

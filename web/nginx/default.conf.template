@@ -21,8 +21,8 @@ server {
         return 200 "ok";
     }
 
-    # API y página pública del destinatario: los headers de seguridad los define share-api.
-    location ~ ^/(api|s)/ {
+    # API (incluye la API pública del destinatario): los headers de seguridad los define share-api.
+    location /api/ {
         proxy_pass $share_api;
         proxy_http_version 1.1;
         proxy_ssl_server_name on;
@@ -34,8 +34,17 @@ server {
         proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-Host $host;
         proxy_read_timeout 60s;
-        # El enlace /s/{token} es una credencial: no se registra en el access log.
+        # Las rutas /api/v1/access/{token} llevan una credencial: no se registran.
         access_log off;
+    }
+
+    # Visor del destinatario (SPA). El token del enlace es una credencial: sin access log, sin
+    # caché y sin Referer hacia ningún otro sitio.
+    location /s/ {
+        access_log off;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        try_files /index.html =404;
     }
 
     location /assets/ {

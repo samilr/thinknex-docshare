@@ -58,7 +58,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/s/{token}": {
+  "/api/v1/access/{token}": {
     parameters: {
       query?: never;
       header?: never;
@@ -66,10 +66,10 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Landing
-     * @description Página mínima del destinatario. GET no consume accesos (seguro ante previsualizadores).
+     * Info
+     * @description Información previa al acceso. A personas específicas no se les revela el título.
      */
-    get: operations["landing_s__token__get"];
+    get: operations["info_api_v1_access__token__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -78,7 +78,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/s/{token}/otp": {
+  "/api/v1/access/{token}/otp": {
     parameters: {
       query?: never;
       header?: never;
@@ -88,14 +88,14 @@ export interface paths {
     get?: never;
     put?: never;
     /** Request Otp */
-    post: operations["request_otp_s__token__otp_post"];
+    post: operations["request_otp_api_v1_access__token__otp_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/s/{token}/verify": {
+  "/api/v1/access/{token}/verify": {
     parameters: {
       query?: never;
       header?: never;
@@ -104,15 +104,89 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Verify Otp */
-    post: operations["verify_otp_s__token__verify_post"];
+    /** Verify */
+    post: operations["verify_api_v1_access__token__verify_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/s/{token}/download": {
+  "/api/v1/access/{token}/open": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Open Link
+     * @description Enlace para cualquier persona: inicia la sesión sin código.
+     */
+    post: operations["open_link_api_v1_access__token__open_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/access/{token}/document": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Document */
+    get: operations["document_api_v1_access__token__document_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/access/{token}/pages/{number}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Page
+     * @description Página renderizada como PNG con marca de agua (vista protegida).
+     */
+    get: operations["page_api_v1_access__token__pages__number__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/access/{token}/text": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Text */
+    get: operations["text_api_v1_access__token__text_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/access/{token}/download": {
     parameters: {
       query?: never;
       header?: never;
@@ -121,11 +195,31 @@ export interface paths {
     };
     /**
      * Download
-     * @description Entrega el documento con marca de agua. Requiere el token obtenido al verificar el OTP.
+     * @description Solo con permiso de descarga o edición. PDF con marca de agua.
      */
-    get: operations["download_s__token__download_get"];
+    get: operations["download_api_v1_access__token__download_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/access/{token}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload Version
+     * @description Solo con permiso de edición: publica una nueva versión del archivo vivo.
+     */
+    post: operations["upload_version_api_v1_access__token__versions_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -514,6 +608,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/shares/{share_id}/link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Rotate Link
+     * @description Genera un enlace nuevo (canal LINK). El anterior deja de funcionar de inmediato.
+     */
+    post: operations["rotate_link_api_v1_shares__share_id__link_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/audit": {
     parameters: {
       query?: never;
@@ -670,6 +784,43 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AccessInfoOut */
+    AccessInfoOut: {
+      /** Shared By */
+      shared_by: string;
+      audience: components["schemas"]["Audience"];
+      permission: components["schemas"]["Permission"];
+      /** Requires Code */
+      requires_code: boolean;
+      /** Destination */
+      destination: string | null;
+      /** Document Title */
+      document_title: string | null;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+    };
+    /** AccessSessionOut */
+    AccessSessionOut: {
+      /** Access Token */
+      access_token: string;
+      /**
+       * Token Type
+       * @default bearer
+       */
+      token_type: string;
+      /** Expires In */
+      expires_in: number;
+      /** Remaining Accesses */
+      remaining_accesses: number;
+    };
+    /**
+     * Audience
+     * @enum {string}
+     */
+    Audience: "SPECIFIC" | "ANYONE";
     /** AuditEventOut */
     AuditEventOut: {
       /** Id */
@@ -738,7 +889,9 @@ export interface components {
       | "DOCUMENT_UPLOADED"
       | "DOCUMENT_VERSION_UPLOADED"
       | "DOCUMENT_VIEWED"
-      | "FOLDER_CREATED";
+      | "FOLDER_CREATED"
+      | "ACCESS_GRANTED"
+      | "SHARE_LINK_ROTATED";
     /** AuditPage */
     AuditPage: {
       /** Items */
@@ -786,6 +939,16 @@ export interface components {
       /** Title */
       title?: string | null;
     };
+    /** Body_upload_version_api_v1_access__token__versions_post */
+    Body_upload_version_api_v1_access__token__versions_post: {
+      /** File */
+      file: string;
+      /**
+       * Comment
+       * @default
+       */
+      comment: string;
+    };
     /** Body_upload_version_api_v1_library_documents__doc_id__versions_post */
     Body_upload_version_api_v1_library_documents__doc_id__versions_post: {
       /** File */
@@ -818,7 +981,7 @@ export interface components {
      * Channel
      * @enum {string}
      */
-    Channel: "EMAIL" | "WHATSAPP" | "SMS";
+    Channel: "LINK" | "EMAIL" | "WHATSAPP" | "SMS";
     /**
      * Classification
      * @enum {string}
@@ -860,19 +1023,27 @@ export interface components {
       sha256: string;
       classification: components["schemas"]["Classification"];
     };
-    /** DownloadTokenResponse */
-    DownloadTokenResponse: {
-      /** Access Token */
-      access_token: string;
-      /**
-       * Token Type
-       * @default bearer
-       */
-      token_type: string;
-      /** Expires In */
-      expires_in: number;
-      /** Remaining Accesses */
-      remaining_accesses: number;
+    /** DocumentViewOut */
+    DocumentViewOut: {
+      /** Title */
+      title: string;
+      /** Mime Type */
+      mime_type: string;
+      /** Kind */
+      kind: string;
+      /** Version */
+      version: number;
+      /** Live */
+      live: boolean;
+      /** Page Count */
+      page_count: number;
+      permission: components["schemas"]["Permission"];
+      /** Can Download */
+      can_download: boolean;
+      /** Can Edit */
+      can_edit: boolean;
+      /** Viewer Label */
+      viewer_label: string;
     };
     /** FindingSummary */
     FindingSummary: {
@@ -1056,11 +1227,18 @@ export interface components {
       /** Code */
       code: string;
     };
+    /**
+     * Permission
+     * @enum {string}
+     */
+    Permission: "VIEW" | "DOWNLOAD" | "EDIT";
     /** PrecheckRequest */
     PrecheckRequest: {
       /** Document Id */
       document_id: string;
-      recipient: components["schemas"]["RecipientIn"];
+      /** @default SPECIFIC */
+      audience: components["schemas"]["Audience"];
+      recipient?: components["schemas"]["RecipientIn"] | null;
     };
     /** PrecheckResponse */
     PrecheckResponse: {
@@ -1145,10 +1323,17 @@ export interface components {
        */
       id: string;
       document: components["schemas"]["DocumentOut"];
-      recipient: components["schemas"]["RecipientOut"];
+      recipient: components["schemas"]["RecipientOut"] | null;
       /** Shared By */
       shared_by: string;
       channel: components["schemas"]["Channel"];
+      audience: components["schemas"]["Audience"];
+      permission: components["schemas"]["Permission"];
+      /**
+       * Link
+       * @description Solo al crear (canal LINK) o al regenerarlo: no se puede recuperar después
+       */
+      link?: string | null;
       /** Reason */
       reason: string;
       status: components["schemas"]["ShareStatus"];
@@ -1183,8 +1368,12 @@ export interface components {
        * @example doc-003
        */
       document_id: string;
-      recipient: components["schemas"]["RecipientIn"];
       channel: components["schemas"]["Channel"];
+      /** @default SPECIFIC */
+      audience: components["schemas"]["Audience"];
+      /** @default DOWNLOAD */
+      permission: components["schemas"]["Permission"];
+      recipient?: components["schemas"]["RecipientIn"] | null;
       /**
        * Reason
        * @example Envío de informe al auditor
@@ -1425,6 +1614,13 @@ export interface components {
       /** Context */
       ctx?: Record<string, never>;
     };
+    /** VersionPublishedOut */
+    VersionPublishedOut: {
+      /** Version */
+      version: number;
+      /** Findings */
+      findings: components["schemas"]["FindingSummary"][];
+    };
   };
   responses: never;
   parameters: never;
@@ -1496,7 +1692,7 @@ export interface operations {
       };
     };
   };
-  landing_s__token__get: {
+  info_api_v1_access__token__get: {
     parameters: {
       query?: never;
       header?: never;
@@ -1513,7 +1709,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "text/html": string;
+          "application/json": components["schemas"]["AccessInfoOut"];
         };
       };
       /** @description Validation Error */
@@ -1527,7 +1723,7 @@ export interface operations {
       };
     };
   };
-  request_otp_s__token__otp_post: {
+  request_otp_api_v1_access__token__otp_post: {
     parameters: {
       query?: never;
       header?: never;
@@ -1558,7 +1754,7 @@ export interface operations {
       };
     };
   };
-  verify_otp_s__token__verify_post: {
+  verify_api_v1_access__token__verify_post: {
     parameters: {
       query?: never;
       header?: never;
@@ -1579,7 +1775,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["DownloadTokenResponse"];
+          "application/json": components["schemas"]["AccessSessionOut"];
         };
       };
       /** @description Validation Error */
@@ -1593,7 +1789,130 @@ export interface operations {
       };
     };
   };
-  download_s__token__download_get: {
+  open_link_api_v1_access__token__open_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccessSessionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  document_api_v1_access__token__document_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DocumentViewOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  page_api_v1_access__token__pages__number__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+        number: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  text_api_v1_access__token__text_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  download_api_v1_access__token__download_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -1610,6 +1929,41 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_version_api_v1_access__token__versions_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_version_api_v1_access__token__versions_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VersionPublishedOut"];
+        };
       };
       /** @description Validation Error */
       422: {
@@ -2334,6 +2688,37 @@ export interface operations {
     };
   };
   revoke_share_api_v1_shares__share_id__revoke_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        share_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  rotate_link_api_v1_shares__share_id__link_post: {
     parameters: {
       query?: never;
       header?: never;

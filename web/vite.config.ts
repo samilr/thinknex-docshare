@@ -11,7 +11,6 @@ export default defineConfig({
     // Mismo origen en desarrollo: el navegador habla solo con Vite, que reenvía al backend.
     proxy: {
       "/api": { target: apiTarget, changeOrigin: false },
-      "/s": { target: apiTarget, changeOrigin: false },
     },
   },
   build: { sourcemap: false, chunkSizeWarningLimit: 1200 },

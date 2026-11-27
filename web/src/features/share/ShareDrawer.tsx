@@ -14,18 +14,21 @@ import {
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { IconBan, IconPoint } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import { IconBan, IconPoint, IconRefresh } from "@tabler/icons-react";
+import { type ReactNode, useState } from "react";
 import { api, problemMessage, unwrap } from "../../api/client";
 import { useAuth } from "../../auth/context";
 import {
+  AudienceBadge,
   ChannelLabel,
   ClassificationBadge,
   DecisionBadge,
+  PermissionBadge,
   StatusBadge,
 } from "../../components/badges";
 import { formatDateTime } from "../../lib/format";
 import { EVENT, EVENT_COLOR, FINDING } from "../../lib/labels";
+import { LinkReveal } from "./LinkReveal";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -59,6 +62,20 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
         }),
       ),
   });
+  const [newLink, setNewLink] = useState<{ shareId: string; link: string } | null>(null);
+  const rotate = useMutation({
+    mutationFn: async () =>
+      unwrap(
+        await api.POST("/api/v1/shares/{share_id}/link", {
+          params: { path: { share_id: shareId! } },
+        }),
+      ),
+    onSuccess: (data) => {
+      if (data.link) setNewLink({ shareId: data.id, link: data.link });
+      void queryClient.invalidateQueries({ queryKey: ["shares", shareId, "timeline"] });
+    },
+    onError: (e) => notifications.show({ color: "red", message: e.message }),
+  });
   const revoke = useMutation({
     mutationFn: async () => {
       const { data, error } = await api.POST("/api/v1/shares/{share_id}/revoke", {
@@ -80,6 +97,9 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
 
   const s = share.data;
   const canRevoke = s?.status === "ACTIVE" && (s.shared_by === user?.email || hasRole("ADMIN"));
+  const canRotate = canRevoke && s?.channel === "LINK";
+  const visibleLink = newLink && newLink.shareId === shareId ? newLink.link : null;
+  const recipientName = s?.recipient?.name ?? "quien tenga el enlace";
   const report = s?.sensitivity_report as
     { findings?: { type: string; count: number }[] } | undefined;
 
@@ -103,10 +123,16 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
           </Group>
           <SimpleGrid cols={2} spacing="md">
             <Field label="Destinatario">
-              <Text size="sm">{s.recipient.name}</Text>
-              <Text size="xs" c="dimmed">
-                {s.recipient.contact} · {s.recipient.is_external ? "externo" : "interno"}
-              </Text>
+              {s.recipient ? (
+                <>
+                  <Text size="sm">{s.recipient.name}</Text>
+                  <Text size="xs" c="dimmed">
+                    {s.recipient.contact} · {s.recipient.is_external ? "externo" : "interno"}
+                  </Text>
+                </>
+              ) : (
+                <Text size="sm">Cualquier persona con el enlace</Text>
+              )}
             </Field>
             <Field label="Medio">
               <ChannelLabel channel={s.channel} />
@@ -120,7 +146,13 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
             <Field label="Vence">
               <Text size="sm">{formatDateTime(s.expires_at)}</Text>
             </Field>
-            <Field label="Descargas">
+            <Field label="Permiso">
+              <Group gap={6}>
+                <PermissionBadge value={s.permission} />
+                <AudienceBadge value={s.audience} />
+              </Group>
+            </Field>
+            <Field label="Accesos">
               <Text size="sm">
                 {s.access_count} de {s.max_accesses}
               </Text>
@@ -149,6 +181,30 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
               sha256 {s.document.sha256}
             </Text>
           </Field>
+          {visibleLink && <LinkReveal link={visibleLink} />}
+          {canRotate && (
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={16} />}
+              loading={rotate.isPending}
+              onClick={() =>
+                modals.openConfirmModal({
+                  title: "Generar nuevo enlace",
+                  zIndex: 400,
+                  children: (
+                    <Text size="sm">
+                      Se creará un enlace nuevo y el actual dejará de funcionar de inmediato. Úsalo
+                      si perdiste el enlace o si se compartió con quien no debía.
+                    </Text>
+                  ),
+                  labels: { confirm: "Generar", cancel: "Cancelar" },
+                  onConfirm: () => rotate.mutate(),
+                })
+              }
+            >
+              Generar nuevo enlace
+            </Button>
+          )}
           {canRevoke && (
             <Button
               color="red"
@@ -160,8 +216,8 @@ export function ShareDrawer({ shareId, onClose }: { shareId: string | null; onCl
                   title: "Revocar envío",
                   children: (
                     <Text size="sm">
-                      El enlace dejará de funcionar de inmediato para {s.recipient.name}. Esta
-                      acción queda auditada y no se puede deshacer.
+                      El enlace dejará de funcionar de inmediato para {recipientName}. Esta acción
+                      queda auditada y no se puede deshacer.
                     </Text>
                   ),
                   labels: { confirm: "Revocar", cancel: "Cancelar" },
