@@ -7,6 +7,7 @@ significa "cualquiera". Se evalúan todas las reglas activas y gana la más rest
 Condiciones:
 - clasificaciones del documento;
 - destinatario interno, externo o cualquiera ("cualquiera con el enlace" cuenta como externo);
+- quién abre el enlace: persona específica o cualquiera con el enlace;
 - tipos de datos personales detectados (la regla aplica si hay AL MENOS uno de ellos);
 - canales de envío.
 
@@ -50,6 +51,7 @@ class PolicyRule:
     recipient: RecipientScope = RecipientScope.ANY
     finding_types: frozenset[str] = field(default_factory=frozenset)
     channels: frozenset[str] = field(default_factory=frozenset)
+    audiences: frozenset[str] = field(default_factory=frozenset)
 
     def matches(
         self,
@@ -57,6 +59,7 @@ class PolicyRule:
         found: set[str],
         is_external: bool,
         channel: str | None,
+        audience: str = "SPECIFIC",
     ) -> bool:
         if self.classifications and classification.value not in self.classifications:
             return False
@@ -65,6 +68,8 @@ class PolicyRule:
         if self.recipient is RecipientScope.INTERNAL and is_external:
             return False
         if self.finding_types and not (self.finding_types & found):
+            return False
+        if self.audiences and audience not in self.audiences:
             return False
         # Sin canal (revisión previa) no se descarta: se evalúa como el peor caso.
         return not (self.channels and channel is not None and channel not in self.channels)
@@ -99,6 +104,26 @@ DEFAULT_RULES: tuple[PolicyRule, ...] = (
         recipient=RecipientScope.EXTERNAL,
         finding_types=frozenset(FINDING_TYPES),
     ),
+    PolicyRule(
+        name="Enlace para cualquiera con datos personales",
+        action=Decision.BLOCK,
+        message=(
+            "Un enlace para cualquier persona no puede incluir datos personales. "
+            "Use 'Persona específica'."
+        ),
+        finding_types=frozenset(FINDING_TYPES),
+        audiences=frozenset({"ANYONE"}),
+    ),
+    PolicyRule(
+        name="Enlace para cualquiera con documentos confidenciales",
+        action=Decision.BLOCK,
+        message=(
+            "Los documentos confidenciales o restringidos no se comparten con un enlace para "
+            "cualquier persona."
+        ),
+        classifications=frozenset({"CONFIDENTIAL", "RESTRICTED"}),
+        audiences=frozenset({"ANYONE"}),
+    ),
 )
 
 
@@ -117,6 +142,7 @@ def evaluate(
     llm: LlmAssessment | None,
     rules: Iterable[PolicyRule] = DEFAULT_RULES,
     channel: str | None = None,
+    audience: str = "SPECIFIC",
 ) -> PolicyOutcome:
     rules = list(rules)
     found = {f.type for f in findings}
@@ -124,7 +150,7 @@ def evaluate(
     reasons: list[str] = []
     matched: list[str] = []
     for rule in rules:
-        if not rule.matches(classification, found, is_external, channel):
+        if not rule.matches(classification, found, is_external, channel, audience):
             continue
         matched.append(rule.name)
         hit = sorted(rule.finding_types & found)

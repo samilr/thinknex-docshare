@@ -16,6 +16,7 @@ const rule = {
   recipient: "EXTERNAL",
   finding_types: ["RUT", "EMAIL", "PHONE"],
   channels: [],
+  audiences: [],
   enabled: true,
   created_by: "sistema",
   updated_by: "sistema",

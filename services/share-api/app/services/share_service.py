@@ -46,6 +46,7 @@ from app.schemas import (
     ShareRequest,
 )
 from app.sensitivity.checker import SensitivityChecker, SensitivityReport
+from app.sensitivity.llm_classifier import LlmSensitivity
 from app.services import audit_service, messages, notifications, policy_service
 from app.services.context import RequestContext
 
@@ -85,6 +86,7 @@ class ShareService:
         content: bytes,
         is_external: bool,
         channel: Channel | None = None,
+        audience: Audience = Audience.SPECIFIC,
     ) -> SensitivityReport:
         return self.checker.check(
             content=content,
@@ -94,6 +96,7 @@ class ShareService:
             is_external=is_external,
             rules=policy_service.active_rules(self.db),
             channel=channel.value if channel else None,
+            audience=audience.value,
         )
 
     def _upsert_document(self, meta: SourceDocument, content: bytes) -> Document:
@@ -157,7 +160,7 @@ class ShareService:
             recipient is not None and self._is_external(recipient)
         )
         report = apply_link_policy(
-            self._analyze(meta, content, is_external, channel), audience, None
+            self._analyze(meta, content, is_external, channel, audience), audience, None
         )
         return PrecheckResponse(document=meta, report=report)
 
@@ -178,7 +181,9 @@ class ShareService:
         )
         meta, content = self._fetch_verified(req.document_id)
         report = apply_link_policy(
-            self._analyze(meta, content, is_external, req.channel), req.audience, req.permission
+            self._analyze(meta, content, is_external, req.channel, req.audience),
+            req.audience,
+            req.permission,
         )
         audit_service.record(
             self.db,
@@ -404,24 +409,27 @@ class ShareService:
 def apply_link_policy(
     report: SensitivityReport, audience: Audience, permission: Permission | None
 ) -> SensitivityReport:
-    """Reglas propias de los enlaces y permisos, sobre la evaluación de sensibilidad.
+    """Salvaguardas fijas de enlaces y permisos (lo configurable vive en las reglas de política).
 
-    - "Cualquiera con el enlace" solo si el documento sería ALLOW hacia un externo.
+    - "Cualquiera con el enlace" no se permite si el contenido no se pudo analizar o si la IA lo
+      evaluó como de sensibilidad alta: sin identidad del destinatario no hay a quién advertir.
     - Los documentos RESTRINGIDOS no admiten edición por destinatarios.
     """
     reasons: list[str] = []
-    if audience is Audience.ANYONE and report.decision is not Decision.ALLOW:
+    if audience is Audience.ANYONE and (
+        not report.text_extracted
+        or (report.llm is not None and report.llm.sensitivity is LlmSensitivity.HIGH)
+    ):
         reasons.append(
-            "Un enlace para cualquier persona solo se permite con documentos públicos o internos "
-            "sin datos personales. Use 'Persona específica'."
+            "No se pudo confirmar que el documento sea apto para un enlace para cualquier "
+            "persona. Use 'Persona específica'."
         )
     if permission is Permission.EDIT and report.classification is Classification.RESTRICTED:
         reasons.append("Los documentos RESTRINGIDOS no admiten edición por destinatarios.")
     if not reasons:
         return report
-    return report.model_copy(
-        update={"decision": Decision.BLOCK, "reasons": [*report.reasons, *reasons]}
-    )
+    previous = report.reasons if report.decision is Decision.BLOCK else []
+    return report.model_copy(update={"decision": Decision.BLOCK, "reasons": [*previous, *reasons]})
 
 
 def to_share_out(

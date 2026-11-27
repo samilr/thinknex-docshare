@@ -206,6 +206,7 @@ class PolicyRuleRow(Base):
     recipient: Mapped[str] = mapped_column(String(8), default="ANY")
     finding_types: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
     channels: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
+    audiences: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=list)
     enabled: Mapped[bool] = mapped_column(default=True)
     created_by: Mapped[str] = mapped_column(String(320))
     updated_by: Mapped[str] = mapped_column(String(320))

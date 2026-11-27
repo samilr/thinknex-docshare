@@ -1337,6 +1337,11 @@ export interface components {
        */
       channels?: components["schemas"]["Channel"][];
       /**
+       * Audiences
+       * @description Quién abre el enlace. Vacío = cualquiera
+       */
+      audiences?: components["schemas"]["Audience"][];
+      /**
        * Enabled
        * @default true
        */
@@ -1367,6 +1372,8 @@ export interface components {
       finding_types: ("RUT" | "EMAIL" | "PHONE" | "CARD" | "BANK_ACCOUNT")[];
       /** Channels */
       channels: components["schemas"]["Channel"][];
+      /** Audiences */
+      audiences: components["schemas"]["Audience"][];
       /** Enabled */
       enabled: boolean;
       /** Created By */

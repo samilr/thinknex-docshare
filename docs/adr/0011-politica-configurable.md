@@ -16,14 +16,18 @@ compartirlo hacia afuera, y la organización quería relajar esa regla sin despl
      - clasificaciones del documento;
      - destinatario interno, externo o cualquiera;
      - tipos de datos detectados (aplica si hay al menos uno);
-     - canales.
+     - canales;
+     - quién abre el enlace (persona específica o cualquiera con el enlace).
 2. **Evaluación:** se evalúan todas las reglas activas y **gana la más restrictiva**. Si ninguna
    aplica, el envío se permite. La migración siembra cuatro reglas equivalentes a la matriz
    original, así que el comportamiento no cambia hasta que el ADMIN lo decida.
 3. **Fuera de las reglas, y fijos:**
    - la IA solo puede advertir (ADR-0005);
    - un documento que no se pudo analizar pide confirmación;
-   - "cualquiera con el enlace" exige que ninguna regla advierta ni bloquee (ADR-0010);
+   - "cualquiera con el enlace" se bloquea si el contenido no se pudo analizar o la IA lo
+     evaluó como de sensibilidad alta. El resto de lo que bloquea esos enlaces son reglas
+     editables sembradas por la migración `0006` ("Enlace para cualquiera con datos personales"
+     y "… con documentos confidenciales");
    - la edición por destinatarios no se permite sobre documentos RESTRICTED.
 4. **Gobierno:**
    - solo el ADMIN modifica;

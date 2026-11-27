@@ -50,6 +50,7 @@ class SensitivityChecker:
         is_external: bool,
         rules: Sequence[PolicyRule] = DEFAULT_RULES,
         channel: str | None = None,
+        audience: str = "SPECIFIC",
     ) -> SensitivityReport:
         text = extract_text(content, mime_type)
         detections = detect(text) if text else []
@@ -73,6 +74,7 @@ class SensitivityChecker:
             llm=llm,
             rules=rules,
             channel=channel,
+            audience=audience,
         )
         decision, reasons = outcome.decision, outcome.reasons
         if text is None and is_external:

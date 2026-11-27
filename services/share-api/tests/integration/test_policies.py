@@ -27,6 +27,7 @@ def _body(rule: dict[str, Any], **changes: Any) -> dict[str, Any]:
         "recipient",
         "finding_types",
         "channels",
+        "audiences",
         "enabled",
     )
     return {**{k: rule[k] for k in keys}, **changes}
@@ -201,3 +202,34 @@ def test_admin_can_share(api: Api) -> None:
     )
     assert r.status_code == 201, r.text
     assert r.json()["shared_by"] == "admin@thinknex.example"
+
+
+def test_admin_can_relax_anyone_link_rule(api: Api) -> None:
+    rule = _rule(api, "Enlace para cualquiera con datos personales")
+    assert rule["audiences"] == ["ANYONE"] and rule["action"] == "BLOCK"
+    body = {
+        "document_id": "doc-email",
+        "channel": "LINK",
+        "audience": "ANYONE",
+        "permission": "VIEW",
+        "recipient": None,
+        "reason": "Folleto con contacto",
+        "acknowledge_sensitive": True,
+    }
+    ana = api.headers("ana@thinknex.example")
+    blocked = api.client.post("/api/v1/shares", json=body, headers=ana)
+    assert blocked.status_code == 403
+    assert blocked.json()["report"]["reasons"] == [rule["message"]]
+
+    admin = api.admin_headers()
+    url = f"{POLICIES}/{rule['id']}"
+    api.client.put(url, json=_body(rule, enabled=False), headers=admin)
+    try:
+        warned = api.client.post(
+            "/api/v1/shares", json={**body, "acknowledge_sensitive": False}, headers=ana
+        )
+        assert warned.status_code == 409, "sin la regla, solo pide confirmación"
+        created = api.client.post("/api/v1/shares", json=body, headers=ana)
+        assert created.status_code == 201, created.text
+    finally:
+        api.client.put(url, json=_body(rule), headers=admin)

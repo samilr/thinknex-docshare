@@ -27,7 +27,7 @@ import { api, problemMessage, type Schemas, unwrap } from "../api/client";
 import { useAuth } from "../auth/context";
 import { PageHeader } from "../components/PageHeader";
 import { formatRelative } from "../lib/format";
-import { CHANNEL, CLASSIFICATION, FINDING, labelOf } from "../lib/labels";
+import { AUDIENCE, CHANNEL, CLASSIFICATION, FINDING, labelOf } from "../lib/labels";
 
 type Rule = Schemas["PolicyRuleOut"];
 type RuleIn = Schemas["PolicyRuleIn"];
@@ -52,6 +52,7 @@ const EMPTY: RuleIn = {
   recipient: "EXTERNAL",
   finding_types: [],
   channels: [],
+  audiences: [],
   enabled: true,
 };
 
@@ -78,6 +79,9 @@ function Conditions({ rule }: { rule: Rule }) {
       : null,
     rule.channels.length
       ? `Por ${rule.channels.map((c) => labelOf(CHANNEL, c).label).join(" o ")}`
+      : null,
+    rule.audiences.length
+      ? rule.audiences.map((a) => labelOf(AUDIENCE, a).label).join(" o ")
       : null,
   ].filter(Boolean);
   return (
@@ -116,6 +120,7 @@ function RuleForm({ rule, onClose }: { rule: Rule | "new"; onClose: () => void }
           recipient: rule.recipient,
           finding_types: rule.finding_types,
           channels: rule.channels,
+          audiences: rule.audiences,
           enabled: rule.enabled,
         };
   const form = useForm<RuleIn>({
@@ -196,6 +201,23 @@ function RuleForm({ rule, onClose }: { rule: Rule | "new"; onClose: () => void }
           comboboxProps={{ zIndex: 500 }}
           {...form.getInputProps("finding_types")}
         />
+        <div>
+          <Text size="sm" fw={500} mb={4}>
+            Quién abre el enlace
+          </Text>
+          <SegmentedControl
+            fullWidth
+            data={[
+              { value: "", label: "Cualquiera" },
+              { value: "SPECIFIC", label: "Persona específica" },
+              { value: "ANYONE", label: "Cualquiera con el enlace" },
+            ]}
+            value={form.values.audiences?.length === 1 ? form.values.audiences[0]! : ""}
+            onChange={(value) =>
+              form.setFieldValue("audiences", value ? [value as "SPECIFIC" | "ANYONE"] : [])
+            }
+          />
+        </div>
         <MultiSelect
           label="Medio de envío"
           placeholder="Cualquiera"

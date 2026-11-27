@@ -28,7 +28,8 @@ def _report(decision: Decision, classification: Classification) -> SensitivityRe
     ("decision", "classification", "audience", "permission", "expected"),
     [
         (Decision.ALLOW, Classification.PUBLIC, Audience.ANYONE, Permission.VIEW, Decision.ALLOW),
-        (Decision.WARN, Classification.INTERNAL, Audience.ANYONE, Permission.VIEW, Decision.BLOCK),
+        # Lo de "cualquiera con el enlace" ahora lo deciden reglas editables, no esta salvaguarda.
+        (Decision.WARN, Classification.INTERNAL, Audience.ANYONE, Permission.VIEW, Decision.WARN),
         (Decision.WARN, Classification.INTERNAL, Audience.SPECIFIC, Permission.VIEW, Decision.WARN),
         (
             Decision.WARN,
@@ -103,3 +104,11 @@ def test_render_image_and_unsupported() -> None:
     assert render.page_count(b"hola", "text/plain") == 1
     with pytest.raises(render.UnsupportedPreview):
         render.render_page(b"hola", "text/plain", 0, "x")
+
+
+def test_anyone_blocked_when_content_could_not_be_analyzed() -> None:
+    report = _report(Decision.WARN, Classification.INTERNAL).model_copy(
+        update={"text_extracted": False}
+    )
+    assert apply_link_policy(report, Audience.ANYONE, Permission.VIEW).decision is Decision.BLOCK
+    assert apply_link_policy(report, Audience.SPECIFIC, Permission.VIEW).decision is Decision.WARN

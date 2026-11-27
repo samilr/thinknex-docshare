@@ -16,7 +16,14 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models import PolicyRuleRow, User
-from app.domain.enums import ActorType, AuditEventType, Channel, Classification, Decision
+from app.domain.enums import (
+    ActorType,
+    Audience,
+    AuditEventType,
+    Channel,
+    Classification,
+    Decision,
+)
 from app.sensitivity.policy import PolicyRule, RecipientScope
 from app.services import audit_service
 from app.services.context import RequestContext
@@ -39,6 +46,9 @@ class PolicyRuleIn(BaseModel):
         default_factory=list, description="Aplica si el documento contiene al menos uno"
     )
     channels: list[Channel] = Field(default_factory=list, description="Vacío = cualquier canal")
+    audiences: list[Audience] = Field(
+        default_factory=list, description="Quién abre el enlace. Vacío = cualquiera"
+    )
     enabled: bool = True
 
     @field_validator("name", "message", "description")
@@ -59,6 +69,7 @@ class PolicyRuleOut(BaseModel):
     recipient: RecipientScope
     finding_types: list[FindingType]
     channels: list[Channel]
+    audiences: list[Audience]
     enabled: bool
     created_by: str
     updated_by: str
@@ -75,6 +86,7 @@ _FIELDS = (
     "recipient",
     "finding_types",
     "channels",
+    "audiences",
     "enabled",
 )
 
@@ -86,7 +98,7 @@ def _snapshot(row: PolicyRuleRow) -> dict[str, Any]:
 def _values(data: PolicyRuleIn) -> dict[str, Any]:
     raw = data.model_dump(mode="json")
     # Orden estable para que el "antes/después" de la auditoría no muestre cambios ficticios.
-    for key in ("classifications", "finding_types", "channels"):
+    for key in ("classifications", "finding_types", "channels", "audiences"):
         raw[key] = sorted(set(raw[key]))
     return raw
 
@@ -104,6 +116,7 @@ def active_rules(db: Session) -> list[PolicyRule]:
             recipient=RecipientScope(r.recipient),
             finding_types=frozenset(r.finding_types),
             channels=frozenset(r.channels),
+            audiences=frozenset(r.audiences),
         )
         for r in rows
     ]
