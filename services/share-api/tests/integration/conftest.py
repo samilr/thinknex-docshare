@@ -62,7 +62,6 @@ def database() -> str:
 @pytest.fixture(scope="session")
 def settings(database: str) -> Settings:
     return Settings(
-        env="test",
         log_level="WARNING",
         database_url=database,
         jwt_secret=SecretStr("integration-jwt-secret-0123456789abcdef"),

@@ -21,6 +21,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/meta": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Meta
+     * @description Perfil de ejecución (local | hybrid | gcp): el portal lo muestra en el encabezado.
+     */
+    get: operations["meta_api_v1_meta_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/ready": {
     parameters: {
       query?: never;
@@ -1017,6 +1037,13 @@ export interface components {
       /** Last Login At */
       last_login_at: string | null;
     };
+    /** MetaOut */
+    MetaOut: {
+      /** App Env */
+      app_env: string;
+      /** Version */
+      version: string;
+    };
     /** OtpSentResponse */
     OtpSentResponse: {
       /** Sent To */
@@ -1425,6 +1452,26 @@ export interface operations {
           "application/json": {
             [key: string]: string;
           };
+        };
+      };
+    };
+  };
+  meta_api_v1_meta_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MetaOut"];
         };
       };
     };

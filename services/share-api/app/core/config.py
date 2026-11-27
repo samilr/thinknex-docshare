@@ -1,8 +1,29 @@
 from functools import lru_cache
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+AppEnv = Literal["local", "hybrid", "gcp"]
+
+# Valores por defecto de cada perfil. Solo se aplican a lo que NO se definió explícitamente:
+# una variable de entorno concreta siempre gana sobre el perfil.
+PROFILE_DEFAULTS: dict[str, dict[str, Any]] = {
+    # Todo en Docker en localhost: Postgres, SeaweedFS (S3) y Mailpit locales.
+    "local": {
+        "storage_backend": "s3",
+        "email_provider": "smtp",
+        "public_base_url": "http://localhost:8080",
+    },
+    # Contenedores en localhost conectados a la infraestructura real de GCP.
+    "hybrid": {
+        "storage_backend": "gcs",
+        "email_provider": "smtp",
+        "public_base_url": "http://localhost:8080",
+    },
+    # Todo en Cloud Run. PUBLIC_BASE_URL la define Terraform.
+    "gcp": {"storage_backend": "gcs", "email_provider": "none"},
+}
 
 
 class Settings(BaseSettings):
@@ -10,7 +31,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="ignore")
 
-    env: Literal["dev", "test", "prod"] = "dev"
+    # Perfil de ejecución (APP_ENV): local | hybrid | gcp
+    app_env: AppEnv = "local"
     log_level: str = "INFO"
     public_base_url: str = "http://localhost:8000"
     # Zona horaria del negocio para agrupar indicadores por día
@@ -81,6 +103,18 @@ class Settings(BaseSettings):
     sensitivity_llm_model: str = "claude-haiku-5-5"
     sensitivity_llm_max_chars: int = 8000
     sensitivity_llm_timeout_seconds: float = 20.0
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_profile(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        profile = str(data.get("app_env") or "local")
+        if profile == "gcp" and data.get("resend_api_key"):
+            data.setdefault("email_provider", "resend")
+        for field, value in PROFILE_DEFAULTS.get(profile, {}).items():
+            data.setdefault(field, value)
+        return data
 
     @model_validator(mode="after")
     def _strong_secrets(self) -> Self:

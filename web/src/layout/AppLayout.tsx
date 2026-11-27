@@ -31,6 +31,7 @@ import type { ComponentType } from "react";
 import { Suspense } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { RoleBadge } from "../components/badges";
+import { EnvironmentBadge } from "../components/EnvironmentBadge";
 import { type Role, useAuth } from "../auth/context";
 
 interface NavItem {
@@ -88,6 +89,7 @@ export function AppLayout() {
             <Text fw={700} size="lg">
               ThinkNex Docs
             </Text>
+            <EnvironmentBadge />
           </Group>
           <Group gap="sm">
             <ColorSchemeToggle />

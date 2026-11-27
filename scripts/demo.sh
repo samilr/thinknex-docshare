@@ -3,8 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-BASE="${BASE_URL:-http://localhost:8000}"
-set -a; . ./.env; set +a
+BASE="${BASE_URL:-http://localhost:8080}"
+APP_ENV="${APP_ENV:-local}"
+# Credenciales: las que exporta `make demo` según APP_ENV; si no, las del .env local.
+if [[ -z "${DEMO_USERS_PASSWORD:-}" ]]; then set -a; . ./.env; set +a; fi
 mkdir -p out
 
 bold() { printf "\033[1m%s\033[0m\n" "$*"; }
@@ -81,8 +83,11 @@ api GET "/api/v1/audit?document_id=doc-003" "$CARLA" \
 
 step "9. Integridad de la auditoría"
 api GET /api/v1/audit/verify "$CARLA" | jq -c .
-info "Intento de alterar un evento directamente en la BD:"
-docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "${POSTGRES_DB:-share}" \
-  -c "UPDATE audit_events SET channel='SMS' WHERE id=(SELECT min(id) FROM audit_events)" 2>&1 | sed 's/^/  /' || true
+if [[ "$APP_ENV" == "local" ]]; then
+  info "Intento de alterar un evento directamente en la BD:"
+  docker compose -p thinknex-share -f docker-compose.yml -f compose.local.yml exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "${POSTGRES_DB:-share}" \
+    -c "UPDATE audit_events SET channel='SMS' WHERE id=(SELECT min(id) FROM audit_events)" 2>&1 | sed 's/^/  /' || true
+fi
 
-printf "\n"; bold "Listo. Portal: http://localhost:8080 · Swagger: $BASE/docs · Mailpit: http://localhost:8025"
+printf "\n"; bold "Listo ($APP_ENV). Portal: $BASE"

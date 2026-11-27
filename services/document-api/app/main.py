@@ -61,6 +61,6 @@ def create_app(settings: Settings | None = None, store: BlobStore | None = None)
 
     @app.get("/health", tags=["health"])
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok", "app_env": settings.app_env}
 
     return app

@@ -7,6 +7,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ -z "${REGISTRY:-}" ]]; then
+  ADC="${CLOUDSDK_CONFIG:-$HOME/.config/gcloud}/application_default_credentials.json"
+  if [[ ! -f "$ADC" && -z "${GOOGLE_OAUTH_ACCESS_TOKEN:-}" ]]; then
+    export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)
+  fi
   TF="terraform -chdir=infra/terraform"
   REGISTRY=$($TF output -raw registry)
   REGION=$($TF output -raw region)

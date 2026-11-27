@@ -4,17 +4,15 @@ locals {
   web_url = "https://${var.name_prefix}-web-${local.project_number}.${var.region}.run.app"
 
   share_api_env = {
-    ENV                     = "prod"
+    APP_ENV                 = "gcp"
     LOG_LEVEL               = "INFO"
     RUN_MIGRATIONS          = "false"
     PUBLIC_BASE_URL         = local.web_url
     BUSINESS_TIMEZONE       = var.business_timezone
     FORWARDED_ALLOW_IPS     = "*"
-    STORAGE_BACKEND         = "gcs"
     SNAPSHOT_BUCKET         = google_storage_bucket.snapshots.name
     DMS_BASE_URL            = google_cloud_run_v2_service.document_api.uri
     DMS_AUDIENCE            = google_cloud_run_v2_service.document_api.uri
-    EMAIL_PROVIDER          = var.resend_api_key != "" ? "resend" : "none"
     EMAIL_FROM              = var.email_from
     SIMULATED_INBOX_ENABLED = tostring(var.simulated_inbox_enabled)
     BOOTSTRAP_ADMIN_EMAIL   = var.bootstrap_admin_email
@@ -78,8 +76,8 @@ resource "google_cloud_run_v2_service" "document_api" {
         }
       }
       env {
-        name  = "STORAGE_BACKEND"
-        value = "gcs"
+        name  = "APP_ENV"
+        value = "gcp"
       }
       env {
         name  = "DMS_BUCKET"

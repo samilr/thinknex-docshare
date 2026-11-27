@@ -59,3 +59,15 @@ output "github_wif_provider" {
 output "github_deployer_service_account" {
   value = local.wif_enabled ? google_service_account.deployer[0].email : null
 }
+
+output "project_id" {
+  value = var.project_id
+}
+
+output "snapshot_bucket" {
+  value = google_storage_bucket.snapshots.name
+}
+
+output "dms_bucket" {
+  value = google_storage_bucket.dms.name
+}

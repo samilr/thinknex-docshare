@@ -1,0 +1,36 @@
+# APP_ENV=hybrid: contenedores en localhost conectados a la infraestructura real de GCP.
+# Variables en .env.hybrid (lo genera scripts/env-hybrid.sh; nunca se versiona).
+x-gcp: &gcp
+  GOOGLE_APPLICATION_CREDENTIALS: /gcloud/application_default_credentials.json
+  GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?definir en .env.hybrid}
+
+services:
+  # Túnel autenticado (IAM + TLS) hacia Cloud SQL, con las credenciales ADC del usuario.
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "${CLOUDSQL_CONNECTION_NAME:?definir en .env.hybrid}"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/application_default_credentials.json
+    volumes: ["${GCLOUD_CONFIG_DIR:?definir en .env.hybrid}:/gcloud:ro"]
+    ports: ["5434:5432"]
+
+  document-api:
+    environment:
+      <<: *gcp
+      DMS_BUCKET: ${DMS_BUCKET:?definir en .env.hybrid}
+      DATABASE_URL: ${DMS_DATABASE_URL:?definir en .env.hybrid}
+    volumes: ["${GCLOUD_CONFIG_DIR}:/gcloud:ro"]
+    depends_on:
+      cloud-sql-proxy: { condition: service_started }
+
+  share-api:
+    environment:
+      <<: *gcp
+      DATABASE_URL: ${SHARE_DATABASE_URL:?definir en .env.hybrid}
+      SNAPSHOT_BUCKET: ${SNAPSHOT_BUCKET:?definir en .env.hybrid}
+    volumes: ["${GCLOUD_CONFIG_DIR}:/gcloud:ro"]
+    depends_on:
+      cloud-sql-proxy: { condition: service_started }

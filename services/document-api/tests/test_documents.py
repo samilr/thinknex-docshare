@@ -35,7 +35,7 @@ def test_requires_api_key(client: TestClient) -> None:
 
 def test_health_is_public(client: TestClient) -> None:
     del client.headers["X-API-Key"]
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "ok", "app_env": "local"}
 
 
 def test_seed_libraries_folders_and_documents(client: TestClient) -> None:
@@ -151,3 +151,14 @@ def test_pdf_generation_is_deterministic() -> None:
     entry = catalog.documents[0]
     assert render_pdf(entry) == render_pdf(entry)
     assert render_pdf(entry, 1) != render_pdf(entry, 2)
+
+
+@pytest.mark.parametrize(
+    ("app_env", "storage", "create_db"),
+    [("local", "s3", True), ("hybrid", "gcs", False), ("gcp", "gcs", False)],
+)
+def test_profile_defaults(app_env: str, storage: str, create_db: bool) -> None:
+    s = Settings(dms_api_key=SecretStr("k"), app_env=app_env)  # type: ignore[arg-type]
+    assert (s.storage_backend, s.dms_create_database) == (storage, create_db)
+    explicit = Settings(dms_api_key=SecretStr("k"), app_env=app_env, storage_backend="s3")  # type: ignore[arg-type]
+    assert explicit.storage_backend == "s3"

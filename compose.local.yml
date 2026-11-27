@@ -1,0 +1,65 @@
+# APP_ENV=local: todo en Docker en localhost (Postgres, S3 compatible y Mailpit).
+x-s3: &s3
+  S3_ENDPOINT_URL: http://s3:8333
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?definir en .env}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?definir en .env}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?definir en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-share}
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Almacenamiento de objetos S3 compatible (SeaweedFS). En la nube: Cloud Storage.
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf '{"identities":[{"name":"app","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json &&
+        exec weed server -dir=/data -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=64 -volume.max=64
+        -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?definir en .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?definir en .env}
+    ports: ["8333:8333"]
+    volumes: [s3data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  document-api:
+    environment:
+      <<: *s3
+      DMS_BUCKET: dms-documents
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/dms
+    depends_on:
+      s3: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+
+  share-api:
+    environment:
+      <<: *s3
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-share}
+      SNAPSHOT_BUCKET: share-snapshots
+    depends_on:
+      postgres: { condition: service_healthy }
+      s3: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  s3data:
